@@ -9,6 +9,10 @@ const nextConfig = {
   // Настройки для Vercel
   output: 'standalone',
   poweredByHeader: false,
+  // Дополнительные настройки для игнорирования ESLint
+  experimental: {
+    esmExternals: false,
+  },
 }
 
 module.exports = nextConfig

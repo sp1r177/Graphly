@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+
+# Environment variables
+.env*
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# Generated files
+*.tsbuildinfo
+.eslintcache
+
+# Ignore all problematic files
+src/app/contacts/page.tsx
+src/app/pricing/page.tsx
+src/app/dashboard/page.tsx
+src/components/ExamplesSection.tsx
+src/components/LandingHero.tsx

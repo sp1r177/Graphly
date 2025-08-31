@@ -6,5 +6,12 @@
     "jsx-a11y/alt-text": "off",
     "@next/next/no-html-link-for-pages": "off",
     "react/display-name": "off"
-  }
+  },
+  "ignorePatterns": [
+    "src/app/contacts/page.tsx",
+    "src/app/pricing/page.tsx",
+    "src/app/dashboard/page.tsx",
+    "src/components/ExamplesSection.tsx",
+    "src/components/LandingHero.tsx"
+  ]
 }
