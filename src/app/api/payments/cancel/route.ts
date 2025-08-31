@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { getUserFromRequest } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,44 +15,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: authUser.userId }
-    })
+    const { paymentId } = await request.json()
 
-    if (!user) {
+    if (!paymentId) {
       return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    if (user.subscriptionStatus === 'FREE') {
-      return NextResponse.json(
-        { error: 'No active subscription to cancel' },
+        { error: 'Payment ID is required' },
         { status: 400 }
       )
     }
 
-    // In production, you would:
-    // 1. Cancel the subscription with Yandex.Kassa
-    // 2. Update the user's subscription status
-    // 3. Set an end date for when the subscription actually ends
-    
-    // For now, we'll mark as cancelled but keep benefits until end of period
-    // In a real implementation, you'd have a separate field for cancellation status
-    
-    console.log(`Subscription cancellation requested for user ${user.email}`)
-    
-    // Here you would typically:
-    // - Call Yandex.Kassa API to cancel recurring payments
-    // - Update subscription metadata
-    // - Send confirmation email
-    
-    return NextResponse.json({ 
-      message: 'Subscription cancellation processed. Access will continue until the end of the current billing period.' 
+    // Check if payment belongs to user
+    const payment = await prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        userId: authUser.userId,
+        status: 'PENDING'
+      }
     })
+
+    if (!payment) {
+      return NextResponse.json(
+        { error: 'Payment not found or cannot be cancelled' },
+        { status: 404 }
+      )
+    }
+
+    // Update payment status to cancelled
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: 'CANCELLED' }
+    })
+
+    return NextResponse.json({ message: 'Payment cancelled successfully' })
   } catch (error) {
-    console.error('Subscription cancellation error:', error)
+    console.error('Payment cancellation error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { getUserFromRequest } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +18,7 @@ export async function GET(request: NextRequest) {
     const generations = await prisma.generation.findMany({
       where: { userId: authUser.userId },
       orderBy: { timestamp: 'desc' },
-      take: 50, // Limit to last 50 generations
+      take: 50,
       select: {
         id: true,
         prompt: true,
@@ -27,7 +29,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ generations })
+    return NextResponse.json(generations)
   } catch (error) {
     console.error('Generation history fetch error:', error)
     return NextResponse.json(

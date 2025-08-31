@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { getUserFromRequest, validateEmail } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+
+export const dynamic = 'force-dynamic'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -15,35 +17,43 @@ export async function PUT(request: NextRequest) {
 
     const { name, email } = await request.json()
 
-    // For now, only allow name updates (email changes require verification)
-    const updateData: any = {}
-    
-    if (name !== undefined) {
-      updateData.name = name.trim() || null
+    // Validate email
+    if (email && !validateEmail(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      )
     }
 
-    // If email is different, we'd need to implement email verification
-    // For this MVP, we'll skip email updates
-    
+    // Check if email is already taken by another user
+    if (email && email !== authUser.email) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email }
+      })
+
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'Email already in use' },
+          { status: 409 }
+        )
+      }
+    }
+
+    // Update user profile
     const updatedUser = await prisma.user.update({
       where: { id: authUser.userId },
-      data: updateData,
+      data: {
+        name: name || undefined,
+        email: email || undefined,
+      },
       select: {
         id: true,
-        email: true,
         name: true,
-        subscriptionStatus: true,
-        usageCountDay: true,
-        usageCountMonth: true,
-        lastGenerationDate: true,
-        createdAt: true,
+        email: true,
       }
     })
 
-    return NextResponse.json({ 
-      message: 'Profile updated successfully',
-      user: updatedUser 
-    })
+    return NextResponse.json(updatedUser)
   } catch (error) {
     console.error('Profile update error:', error)
     return NextResponse.json(

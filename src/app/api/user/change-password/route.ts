@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { getUserFromRequest, verifyPassword, hashPassword, validatePassword } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+
+export const dynamic = 'force-dynamic'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -23,17 +25,17 @@ export async function PUT(request: NextRequest) {
     }
 
     // Validate new password
-    const passwordValidation = validatePassword(newPassword)
-    if (!passwordValidation.valid) {
+    if (!validatePassword(newPassword)) {
       return NextResponse.json(
-        { error: passwordValidation.message },
+        { error: 'New password must be at least 6 characters long' },
         { status: 400 }
       )
     }
 
-    // Get current user
+    // Get current user with password
     const user = await prisma.user.findUnique({
-      where: { id: authUser.userId }
+      where: { id: authUser.userId },
+      select: { password: true }
     })
 
     if (!user) {
@@ -44,25 +46,23 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify current password
-    const isValidPassword = await verifyPassword(currentPassword, user.password)
-    if (!isValidPassword) {
+    if (!verifyPassword(currentPassword, user.password)) {
       return NextResponse.json(
         { error: 'Current password is incorrect' },
         { status: 400 }
       )
     }
 
-    // Hash new password and update
-    const hashedNewPassword = await hashPassword(newPassword)
-    
+    // Hash new password
+    const hashedPassword = hashPassword(newPassword)
+
+    // Update password
     await prisma.user.update({
       where: { id: authUser.userId },
-      data: { password: hashedNewPassword }
+      data: { password: hashedPassword }
     })
 
-    return NextResponse.json({ 
-      message: 'Password changed successfully' 
-    })
+    return NextResponse.json({ message: 'Password updated successfully' })
   } catch (error) {
     console.error('Password change error:', error)
     return NextResponse.json(

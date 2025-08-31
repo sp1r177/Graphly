@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { getUserFromRequest } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,6 +18,7 @@ export async function GET(request: NextRequest) {
     const payments = await prisma.payment.findMany({
       where: { userId: authUser.userId },
       orderBy: { timestamp: 'desc' },
+      take: 50,
       select: {
         id: true,
         amount: true,
@@ -26,7 +29,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ payments })
+    return NextResponse.json(payments)
   } catch (error) {
     console.error('Payment history fetch error:', error)
     return NextResponse.json(
