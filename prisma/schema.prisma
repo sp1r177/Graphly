@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email            String   @unique
+  password         String
+  name             String?
+  subscriptionStatus SubscriptionStatus @default(FREE)
+  usageCountDay    Int      @default(0)
+  usageCountMonth  Int      @default(0)
+  lastGenerationDate DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  generations      Generation[]
+  payments         Payment[]
+  
+  @@map("users")
+}
+
+model Generation {
+  id              String   @id @default(cuid())
+  userId          String
+  prompt          String
+  outputText      String?
+  outputImageUrl  String?
+  templateType    TemplateType
+  timestamp       DateTime @default(now())
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("generations")
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  amount          Float
+  currency        String   @default("RUB")
+  status          PaymentStatus @default(PENDING)
+  yandexPaymentId String?
+  subscriptionType SubscriptionStatus
+  timestamp       DateTime @default(now())
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("payments")
+}
+
+enum SubscriptionStatus {
+  FREE
+  PRO
+  ULTRA
+}
+
+enum TemplateType {
+  VK_POST
+  TELEGRAM_POST
+  EMAIL_CAMPAIGN
+  BLOG_ARTICLE
+  VIDEO_SCRIPT
+  IMAGE_GENERATION
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
