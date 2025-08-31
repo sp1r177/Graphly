@@ -131,6 +131,24 @@ YANDEX_KASSA_SECRET_KEY="your-secret-key"
 2. Настройте переменные окружения
 3. Деплой происходит автоматически
 
+### Устранение проблем
+
+#### ESLint ошибки с кавычками
+Уже исправлено в `.eslintrc.json`:
+```json
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "react/no-unescaped-entities": "off"
+  }
+}
+```
+
+#### База данных в продакшене
+- SQLite не работает в serverless окружении
+- Используйте Vercel Postgres или PlanetScale
+- Обновите `DATABASE_URL` в переменных окружения
+
 ### Альтернативные варианты
 - **Netlify**: Поддерживает Next.js
 - **VPS**: Docker контейнер или PM2

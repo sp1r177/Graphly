@@ -72,7 +72,7 @@ export default function ContactsPage() {
             <CardContent>
               <p className="text-gray-600 mb-4">
                 г. Москва, ул. Тверская, д. 1, офис 101<br/>
-                БЦ "Технопарк", 125009
+                БЦ &quot;Технопарк&quot;, 125009
               </p>
               <div className="bg-gray-100 rounded-lg p-4">
                 <p className="text-sm text-gray-600">
