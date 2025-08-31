@@ -5,6 +5,7 @@ import { Button, Input, Textarea, Select, Card, CardHeader, CardTitle, CardConte
 import { Header } from '@/components/Header'
 import { Sparkles, Copy, Download, Clock, BarChart3, Crown, Zap } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 
 interface Generation {
@@ -225,9 +226,11 @@ export default function DashboardPage() {
                       
                       {result.imageUrl && (
                         <Card className="p-4">
-                          <img
+                          <Image
                             src={result.imageUrl}
                             alt="Generated content"
+                            width={512}
+                            height={384}
                             className="max-w-full h-auto rounded-lg"
                           />
                         </Card>

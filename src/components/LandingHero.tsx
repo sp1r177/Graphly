@@ -3,6 +3,7 @@
 import { useLanguage, useUser } from '@/app/providers'
 import { Button, Input, Textarea, Select, Card } from '@/components/ui'
 import { Copy, Download, Sparkles, Wand2 } from 'lucide-react'
+import Image from 'next/image'
 import { useState } from 'react'
 
 export function LandingHero() {
@@ -161,9 +162,11 @@ export function LandingHero() {
                     
                     {result.imageUrl && (
                       <Card className="p-4">
-                        <img
+                        <Image
                           src={result.imageUrl}
                           alt="Generated content"
+                          width={512}
+                          height={384}
                           className="max-w-full h-auto rounded-lg"
                         />
                       </Card>
