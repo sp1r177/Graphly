@@ -6,6 +6,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Настройки для Vercel
+  output: 'standalone',
+  poweredByHeader: false,
 }
 
 module.exports = nextConfig
