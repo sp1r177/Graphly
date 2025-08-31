@@ -1,22 +1,22 @@
 'use client'
 
-import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent } from '@/components/ui'
-import { Mail, MessageCircle, Send } from 'lucide-react'
+import { Button, Input, Textarea, Card } from '@/components/ui'
+import { Send, MessageCircle } from 'lucide-react'
 import { useState } from 'react'
 
 export function ContactForm() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    subject: '',
     message: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-
+    
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
@@ -27,8 +27,8 @@ export function ContactForm() {
       })
 
       if (response.ok) {
-        alert('Сообщение отправлено! Мы свяжемся с вами в ближайшее время.')
-        setFormData({ name: '', email: '', subject: '', message: '' })
+        setIsSubmitted(true)
+        setFormData({ name: '', email: '', message: '' })
       } else {
         throw new Error('Failed to send message')
       }
@@ -47,144 +47,117 @@ export function ContactForm() {
     }))
   }
 
+  if (isSubmitted) {
+    return (
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <Card className="p-12 bg-white">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <MessageCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Сообщение отправлено!
+            </h2>
+            <p className="text-lg text-gray-600 mb-8">
+              Спасибо за ваше сообщение. Мы свяжемся с вами в ближайшее время.
+            </p>
+            <Button
+              onClick={() => setIsSubmitted(false)}
+              variant="outline"
+              size="lg"
+            >
+              Отправить еще одно сообщение
+            </Button>
+          </Card>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="py-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
             Остались вопросы?
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Свяжитесь с нами, и мы поможем вам начать создавать профессиональный контент
+          <p className="text-xl text-gray-600">
+            Напишите нам, и мы поможем вам создать идеальный контент
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Contact Info */}
-          <div className="space-y-8">
-            <div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-6">
-                Мы всегда на связи
-              </h3>
-              <div className="space-y-6">
-                <div className="flex items-start space-x-4">
-                  <Mail className="text-primary-600 mt-1" size={20} />
-                  <div>
-                    <h4 className="font-medium text-gray-900">Email поддержка</h4>
-                    <p className="text-gray-600">support@aikontent.ru</p>
-                    <p className="text-sm text-gray-500">Ответим в течение 2 часов</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start space-x-4">
-                  <MessageCircle className="text-primary-600 mt-1" size={20} />
-                  <div>
-                    <h4 className="font-medium text-gray-900">Telegram</h4>
-                    <p className="text-gray-600">@aikontent_support</p>
-                    <p className="text-sm text-gray-500">Онлайн 24/7</p>
-                  </div>
-                </div>
+        <Card className="p-8 md:p-10 shadow-xl">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Ваше имя
+                </label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Иван Иванов"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="ivan@example.com"
+                  required
+                />
               </div>
             </div>
 
-            <div className="bg-primary-50 p-6 rounded-lg">
-              <h4 className="font-semibold text-primary-900 mb-2">
-                Для бизнес-клиентов
-              </h4>
-              <p className="text-primary-800 text-sm mb-4">
-                Нужна интеграция с вашей CRM или особые требования? 
-                Мы поможем настроить AIКонтент под ваши задачи.
-              </p>
-              <p className="text-primary-700 font-medium text-sm">
-                📞 +7 (495) 123-45-67
-              </p>
+            <div>
+              <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                Сообщение
+              </label>
+              <Textarea
+                id="message"
+                name="message"
+                value={formData.message}
+                onChange={handleChange}
+                placeholder="Расскажите, какой контент вам нужен или задайте вопрос..."
+                rows={5}
+                required
+              />
             </div>
-          </div>
 
-          {/* Contact Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Напишите нам</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Имя
-                    </label>
-                    <Input
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required
-                      placeholder="Ваше имя"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <Input
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      placeholder="your@email.ru"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Тема
-                  </label>
-                  <Input
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleChange}
-                    required
-                    placeholder="О чем хотите написать?"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Сообщение
-                  </label>
-                  <Textarea
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
-                    required
-                    rows={5}
-                    placeholder="Расскажите подробнее о ваших вопросах или предложениях..."
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  variant="primary"
-                  className="w-full"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Send className="animate-pulse mr-2" size={16} />
-                      Отправляем...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2" size={16} />
-                      Отправить сообщение
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+            <div className="text-center">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                variant="primary"
+                size="lg"
+                className="h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Отправляем...
+                  </>
+                ) : (
+                  <>
+                    <Send size={20} className="mr-2" />
+                    Отправить сообщение
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Card>
       </div>
     </section>
   )
