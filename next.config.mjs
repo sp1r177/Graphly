@@ -25,6 +25,10 @@ const nextConfig = {
     }
     return config;
   },
+  // Настройки для Prisma
+  env: {
+    PRISMA_GENERATE_DATAPROXY: 'true',
+  },
 }
 
 export default nextConfig;
