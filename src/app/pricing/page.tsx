@@ -290,7 +290,7 @@ export default function PricingPage() {
           <div className="space-y-8">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Что включает в себя &quot;мягкий лимит&quot; в Pro плане?
+                Что включает в себя "мягкий лимит" в Pro плане?
               </h3>
               <p className="text-gray-600">
                 Pro план предоставляет безлимитный доступ для честного использования. 
