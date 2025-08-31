@@ -114,7 +114,7 @@ export function ExamplesSection() {
                     {example.image && (
                       <div className="rounded-lg overflow-hidden">
                         <div className="w-full h-32 bg-gradient-to-r from-primary-100 to-primary-200 flex items-center justify-center">
-                          <Image size={48} className="text-primary-400" />
+                          <Image size={48} className="text-primary-400" alt="Сгенерированное изображение" />
                           <span className="ml-2 text-primary-600 font-medium">
                             Сгенерированное изображение
                           </span>
