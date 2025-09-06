@@ -117,6 +117,79 @@ export async function POST(request: NextRequest) {
 }
 
 async function generateContent(prompt: string, templateType: string): Promise<string> {
+  const yandexApiKey = process.env.YANDEX_GPT_API_KEY
+  const yandexFolderId = process.env.YANDEX_GPT_FOLDER_ID
+  const yandexApiUrl = process.env.YANDEX_GPT_API_URL || 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion'
+
+  // If Yandex GPT API is not configured, fall back to mock generation
+  if (!yandexApiKey || !yandexFolderId) {
+    console.warn('Yandex GPT API not configured, using mock generation')
+    return generateMockContent(prompt, templateType)
+  }
+
+  try {
+    // Create system prompt based on template type
+    const systemPrompts = {
+      'VK_POST': 'Ты эксперт по созданию постов для ВКонтакте. Создай привлекательный пост с эмодзи и хештегами.',
+      'TELEGRAM_POST': 'Ты эксперт по созданию постов для Telegram. Создай информативный пост с эмодзи.',
+      'EMAIL_CAMPAIGN': 'Ты эксперт по email-маркетингу. Создай профессиональное email-письмо.',
+      'BLOG_ARTICLE': 'Ты эксперт по созданию статей для блога. Создай структурированную статью с заголовками.',
+      'VIDEO_SCRIPT': 'Ты эксперт по созданию сценариев для видео. Создай увлекательный сценарий с описанием сцен.',
+      'IMAGE_GENERATION': 'Ты эксперт по описанию изображений для AI-генерации. Создай детальное описание для генерации изображения.'
+    }
+
+    const systemPrompt = systemPrompts[templateType as keyof typeof systemPrompts] || 'Создай качественный контент на основе запроса.'
+
+    const requestBody = {
+      modelUri: `gpt://${yandexFolderId}/yandexgpt`,
+      completionOptions: {
+        stream: false,
+        temperature: 0.7,
+        maxTokens: 2000
+      },
+      messages: [
+        {
+          role: "system",
+          text: systemPrompt
+        },
+        {
+          role: "user", 
+          text: prompt
+        }
+      ]
+    }
+
+    const response = await fetch(yandexApiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Api-Key ${yandexApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Yandex GPT API error:', response.status, errorText)
+      throw new Error(`Yandex GPT API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    
+    if (data.result && data.result.alternatives && data.result.alternatives[0]) {
+      return data.result.alternatives[0].message.text
+    } else {
+      throw new Error('Invalid response from Yandex GPT API')
+    }
+
+  } catch (error) {
+    console.error('Yandex GPT API error:', error)
+    // Fall back to mock generation if API fails
+    return generateMockContent(prompt, templateType)
+  }
+}
+
+function generateMockContent(prompt: string, templateType: string): string {
   // Simulate AI generation delay
   await new Promise(resolve => setTimeout(resolve, 1000))
   
