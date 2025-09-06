@@ -4,7 +4,12 @@ import { hashPassword, generateToken, validateEmail, validatePassword } from '@/
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔍 Registration Debug:')
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✅ Найден' : '❌ Не найден')
+    console.log('JWT_SECRET:', process.env.JWT_SECRET ? '✅ Найден' : '❌ Не найден')
+    
     const { email, password, name } = await request.json()
+    console.log('Registration attempt for:', email)
 
     if (!email || !password) {
       return NextResponse.json(
