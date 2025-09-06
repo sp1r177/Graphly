@@ -23,9 +23,12 @@ if %errorlevel% neq 0 (
 
 echo.
 echo [3/4] Создание базы данных...
+echo ВНИМАНИЕ: Для продакшена на Vercel используйте внешнюю БД (Neon/PlanetScale)
+echo Для локальной разработки будет создана SQLite база данных
 call npx prisma db push
 if %errorlevel% neq 0 (
     echo Ошибка при создании базы данных!
+    echo Убедитесь, что DATABASE_URL правильно настроен в .env
     pause
     exit /b 1
 )
@@ -35,7 +38,10 @@ echo [4/4] Проверка файла .env...
 if not exist .env (
     echo Создание файла .env...
     echo # Database > .env
+    echo # Для локальной разработки (SQLite) >> .env
     echo DATABASE_URL="file:./dev.db" >> .env
+    echo # Для продакшена на Vercel используйте PostgreSQL (Neon/PlanetScale) >> .env
+    echo # DATABASE_URL="postgresql://username:password@hostname/database?sslmode=require" >> .env
     echo. >> .env
     echo # JWT Secret >> .env
     echo JWT_SECRET="your-super-secret-jwt-key-change-this-in-production" >> .env
