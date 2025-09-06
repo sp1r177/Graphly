@@ -117,13 +117,19 @@ export async function POST(request: NextRequest) {
 }
 
 async function generateContent(prompt: string, templateType: string): Promise<string> {
-  const yandexApiKey = process.env.YANDEX_GPT_API_KEY
-  const yandexFolderId = process.env.YANDEX_GPT_FOLDER_ID
-  const yandexApiUrl = process.env.YANDEX_GPT_API_URL || 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion'
+  const yandexApiKey = process.env.YANDEX_API_KEY
+  const yandexFolderId = process.env.YANDEX_FOLDER_ID
+  const yandexApiUrl = 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion'
+
+  console.log('🔍 Yandex GPT API Debug:')
+  console.log('API Key:', yandexApiKey ? '✅ Найден' : '❌ Не найден')
+  console.log('Folder ID:', yandexFolderId ? '✅ Найден' : '❌ Не найден')
+  console.log('API URL:', yandexApiUrl)
 
   // If Yandex GPT API is not configured, fall back to mock generation
   if (!yandexApiKey || !yandexFolderId) {
-    console.warn('Yandex GPT API not configured, using mock generation')
+    console.warn('❌ Yandex GPT API not configured, using mock generation')
+    console.log('Missing:', !yandexApiKey ? 'API_KEY' : '', !yandexFolderId ? 'FOLDER_ID' : '')
     return generateMockContent(prompt, templateType)
   }
 
