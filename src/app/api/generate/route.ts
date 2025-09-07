@@ -51,22 +51,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check user's subscription and usage limits
-    const user = await prisma.user.findUnique({
-      where: { id: authUser.userId },
-      select: {
-        subscriptionStatus: true,
-        usageCountDay: true,
-        usageCountMonth: true,
-        lastGenerationDate: true
-      }
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
+    // ВРЕМЕННО: Отключаем базу данных
+    console.log('Generation attempt (DB disabled):', authUser.userId)
+    
+    // Создаем мок-пользователя
+    const user = {
+      subscriptionStatus: 'FREE' as const,
+      usageCountDay: 0,
+      usageCountMonth: 0,
+      lastGenerationDate: null
     }
 
     // Check daily usage limit for free users
@@ -107,25 +100,14 @@ export async function POST(request: NextRequest) {
     // Simulate AI generation (replace with actual AI service)
     const generatedText = await generateContent(prompt, templateType)
     
-    // Save generation to database
-    const generation = await prisma.generation.create({
-      data: {
-        userId: authUser.userId,
-        prompt,
-        outputText: generatedText,
-        templateType,
-      }
-    })
-
-    // Update user usage counts
-    await prisma.user.update({
-      where: { id: authUser.userId },
-      data: {
-        usageCountDay: { increment: 1 },
-        usageCountMonth: { increment: 1 },
-        lastGenerationDate: new Date()
-      }
-    })
+    // ВРЕМЕННО: Отключаем сохранение в базу данных
+    console.log('Generation completed (DB disabled):', generatedText.substring(0, 100) + '...')
+    
+    // Создаем мок-генерацию
+    const generation = {
+      id: 'mock-generation-id',
+      timestamp: new Date()
+    }
 
     return NextResponse.json({
       id: generation.id,

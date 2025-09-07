@@ -37,39 +37,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    })
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 409 }
-      )
-    }
-
-    // Hash password and create user
-    const hashedPassword = await hashPassword(password)
+    // ВРЕМЕННО: Отключаем базу данных
+    console.log('Registration attempt (DB disabled):', email)
     
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name: name || null,
-        subscriptionStatus: 'FREE',
-        usageCountDay: 0,
-        usageCountMonth: 0,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        subscriptionStatus: true,
-        usageCountDay: true,
-        usageCountMonth: true,
-      }
-    })
+    // Создаем мок-пользователя
+    const user = {
+      id: 'mock-user-id',
+      email,
+      name: name || null,
+      subscriptionStatus: 'FREE' as const,
+      usageCountDay: 0,
+      usageCountMonth: 0,
+    }
 
     // Generate JWT token
     const token = generateToken(user.id, user.email)
