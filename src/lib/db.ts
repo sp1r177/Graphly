@@ -17,4 +17,4 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 const supabaseUrl = process.env.SUPABASE_URL || 'https://tlorolxxxyztzrjlsjbwi.supabase.co'
 const supabaseKey = process.env.SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
