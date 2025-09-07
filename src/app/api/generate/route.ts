@@ -153,12 +153,9 @@ async function generateContent(prompt: string, templateType: string): Promise<st
   console.log('Folder ID:', yandexFolderId ? '✅ Найден' : '❌ Не найден')
   console.log('API URL:', yandexApiUrl)
 
-  // If Yandex GPT API is not configured, fall back to mock generation
-  if (!yandexApiKey || !yandexFolderId) {
-    console.warn('❌ Yandex GPT API not configured, using mock generation')
-    console.log('Missing:', !yandexApiKey ? 'API_KEY' : '', !yandexFolderId ? 'FOLDER_ID' : '')
-    return generateMockContent(prompt, templateType)
-  }
+  // Always use mock generation for now
+  console.log('Using mock generation')
+  return generateMockContent(prompt, templateType)
 
   try {
     // Create system prompt based on template type
@@ -222,7 +219,7 @@ async function generateContent(prompt: string, templateType: string): Promise<st
   }
 }
 
-function generateMockContent(prompt: string, templateType: string): string {
+async function generateMockContent(prompt: string, templateType: string): Promise<string> {
   // Simulate AI generation delay
   await new Promise(resolve => setTimeout(resolve, 1000))
   
