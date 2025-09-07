@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, supabase } from '@/lib/db'
 import { hashPassword, generateToken, validateEmail, validatePassword } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -7,6 +7,8 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Registration Debug:')
     console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✅ Найден' : '❌ Не найден')
     console.log('JWT_SECRET:', process.env.JWT_SECRET ? '✅ Найден' : '❌ Не найден')
+    console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Найден' : '❌ Не найден')
+    console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '✅ Найден' : '❌ Не найден')
     
     const { email, password, name } = await request.json()
     console.log('Registration attempt for:', email)
