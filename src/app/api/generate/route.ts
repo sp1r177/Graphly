@@ -4,8 +4,35 @@ import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+export async function GET(request: NextRequest) {
+  // Простой тест для проверки переменных
+  return NextResponse.json({
+    status: 'OK',
+    message: 'Generate API работает',
+    environment: {
+      DATABASE_URL: process.env.DATABASE_URL ? '✅ Найден' : '❌ Не найден',
+      JWT_SECRET: process.env.JWT_SECRET ? '✅ Найден' : '❌ Не найден',
+      YANDEX_API_KEY: process.env.YANDEX_API_KEY ? '✅ Найден' : '❌ Не найден',
+      YANDEX_FOLDER_ID: process.env.YANDEX_FOLDER_ID ? '✅ Найден' : '❌ Не найден',
+      SUPABASE_URL: process.env.SUPABASE_URL ? '✅ Найден' : '❌ Не найден',
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? '✅ Найден' : '❌ Не найден',
+      NODE_ENV: process.env.NODE_ENV || 'не установлен'
+    },
+    timestamp: new Date().toISOString()
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Добавляем диагностику
+    console.log('🔍 Generate API Debug:')
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✅ Найден' : '❌ Не найден')
+    console.log('JWT_SECRET:', process.env.JWT_SECRET ? '✅ Найден' : '❌ Не найден')
+    console.log('YANDEX_API_KEY:', process.env.YANDEX_API_KEY ? '✅ Найден' : '❌ Не найден')
+    console.log('YANDEX_FOLDER_ID:', process.env.YANDEX_FOLDER_ID ? '✅ Найден' : '❌ Не найден')
+    console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Найден' : '❌ Не найден')
+    console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '✅ Найден' : '❌ Не найден')
+    
     const authUser = getUserFromRequest(request)
     
     if (!authUser) {
