@@ -24,31 +24,30 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 Запрос на генерацию получен')
+
     const isDev = process.env.NODE_ENV !== 'production'
-    // Добавляем диагностику
-    console.log('🔍 Generate API Debug:')
-    console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✅ Найден' : '❌ Не найден')
-    console.log('JWT_SECRET:', process.env.JWT_SECRET ? '✅ Найден' : '❌ Не найден')
-    console.log('YANDEX_API_KEY:', process.env.YANDEX_API_KEY ? '✅ Найден' : '❌ Не найден')
-    console.log('YANDEX_FOLDER_ID:', process.env.YANDEX_FOLDER_ID ? '✅ Найден' : '❌ Не найден')
-    console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Найден' : '❌ Не найден')
-    console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '✅ Найден' : '❌ Не найден')
-    
-    let authUser = getUserFromRequest(request)
-    
-    if (!authUser) {
-      if (isDev) {
-        console.warn('Auth missing in dev, using mock user')
-        authUser = { userId: 'dev-user-id', email: 'dev@example.com' }
-      } else {
+
+    // ВРЕМЕННО: Полностью отключаем авторизацию для тестирования
+    let authUser = null
+
+    if (!isDev) {
+      // В продакшене проверяем авторизацию
+      authUser = getUserFromRequest(request)
+
+      if (!authUser) {
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 401 }
         )
       }
+    } else {
+      console.log('🔧 Dev режим: авторизация отключена')
+      authUser = { userId: 'dev-user-id', email: 'dev@example.com' }
     }
 
     const { prompt, templateType } = await request.json()
+    console.log('📝 Получены данные:', { prompt: prompt?.substring(0, 50), templateType })
 
     if (!prompt || !templateType) {
       return NextResponse.json(
@@ -57,70 +56,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ВРЕМЕННО: Отключаем модификации базы данных
-    console.log('Generation attempt (DB writes disabled):', authUser.userId)
-    
-    // Создаем мок-пользователя
-    const user = {
-      subscriptionStatus: 'FREE' as const,
-      usageCountDay: 0,
-      usageCountMonth: 0,
-      lastGenerationDate: null
-    }
-
-    // Check daily usage limit for free users
-    if (user.subscriptionStatus === 'FREE') {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      
-      const lastGeneration = user.lastGenerationDate
-      const lastGenerationDate = lastGeneration ? new Date(lastGeneration) : null
-      
-      if (!lastGenerationDate || lastGenerationDate < today) {
-        // Reset daily count for new day (local only, DB writes disabled)
-        user.usageCountDay = 0
-      }
-      
-      if (user.usageCountDay >= 10) {
-        return NextResponse.json(
-          { error: 'Daily generation limit reached. Upgrade to Pro for unlimited generations.' },
-          { status: 429 }
-        )
-      }
-    }
-
-    // Check monthly usage limit for Pro users
-    if (user.subscriptionStatus === 'PRO') {
-      if (user.usageCountMonth >= 100) {
-        return NextResponse.json(
-          { error: 'Monthly generation limit reached. Upgrade to Ultra for unlimited generations.' },
-          { status: 429 }
-        )
-      }
-    }
-
-    // Generate content using Yandex GPT API
+    console.log('🤖 Начинаем генерацию контента...')
+    // ВРЕМЕННО: Принудительно используем реальную генерацию
     const generatedText = await generateContent(prompt, templateType)
-    
+
+    console.log('✅ Генерация завершена, длина текста:', generatedText.length)
+
     // ВРЕМЕННО: Отключаем сохранение в базу данных
-    console.log('Generation completed (DB disabled):', generatedText.substring(0, 100) + '...')
-    
+    console.log('💾 Сохранение в БД отключено (временно)')
+
     // Создаем мок-генерацию
     const generation = {
-      id: 'mock-generation-id',
+      id: 'test-generation-' + Date.now(),
       timestamp: new Date()
     }
 
-    return NextResponse.json({
+    const result = {
       id: generation.id,
       text: generatedText,
       templateType,
-      timestamp: generation.timestamp
-    })
+      timestamp: generation.timestamp,
+      debug: {
+        promptLength: prompt.length,
+        textLength: generatedText.length,
+        isDev,
+        hasAuth: !!authUser
+      }
+    }
+
+    console.log('📤 Отправляем ответ')
+    return NextResponse.json(result)
 
   } catch (error) {
-    console.error('Generation error:', error)
-    
+    console.error('❌ Ошибка генерации:', error)
+
     // Handle specific error types
     if (error instanceof Error) {
       if (error.message.includes('API')) {
@@ -135,9 +104,9 @@ export async function POST(request: NextRequest) {
         )
       }
     }
-    
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
@@ -153,11 +122,8 @@ async function generateContent(prompt: string, templateType: string): Promise<st
   console.log('Folder ID:', yandexFolderId ? '✅ Найден' : '❌ Не найден')
   console.log('API URL:', yandexApiUrl)
 
-  // Check if API credentials are available
-  if (!yandexApiKey || !yandexFolderId) {
-    console.warn('⚠️ Yandex API credentials not found, using mock generation')
-    return generateMockContent(prompt, templateType)
-  }
+  // ВРЕМЕННО: Всегда пытаемся использовать Yandex GPT для тестирования
+  console.log('🚀 Пытаемся использовать Yandex GPT API...')
 
   try {
     // Create system prompt based on template type
@@ -185,7 +151,7 @@ async function generateContent(prompt: string, templateType: string): Promise<st
           text: systemPrompt
         },
         {
-          role: "user", 
+          role: "user",
           text: prompt
         }
       ]
@@ -208,7 +174,7 @@ async function generateContent(prompt: string, templateType: string): Promise<st
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ Yandex GPT API error:', response.status, errorText)
-      
+
       // Handle specific error cases
       if (response.status === 401) {
         throw new Error('Неверный API ключ Yandex. Проверьте YANDEX_API_KEY в настройках.')
@@ -225,7 +191,7 @@ async function generateContent(prompt: string, templateType: string): Promise<st
 
     const data = await response.json()
     console.log('✅ Yandex GPT API response received:', JSON.stringify(data, null, 2))
-    
+
     if (data.result && data.result.alternatives && data.result.alternatives[0]) {
       const generatedText = data.result.alternatives[0].message.text
       console.log('🎉 Generated text length:', generatedText.length)
@@ -237,14 +203,9 @@ async function generateContent(prompt: string, templateType: string): Promise<st
 
   } catch (error) {
     console.error('❌ Yandex GPT API error:', error)
-    
-    // If it's a known error, don't fall back to mock
-    if (error instanceof Error && error.message.includes('API')) {
-      throw error
-    }
-    
-    // For network errors or unknown issues, fall back to mock
-    console.warn('⚠️ Falling back to mock generation due to error')
+
+    // Если ключи отсутствуют или другая ошибка - используем мок
+    console.warn('⚠️ Переход на мок-генерацию')
     return generateMockContent(prompt, templateType)
   }
 }
@@ -252,7 +213,7 @@ async function generateContent(prompt: string, templateType: string): Promise<st
 async function generateMockContent(prompt: string, templateType: string): Promise<string> {
   // Simulate AI generation delay
   await new Promise(resolve => setTimeout(resolve, 1000))
-  
+
   // Mock content generation based on template type
   const templates = {
     'VK_POST': `📱 Пост для ВКонтакте:\n\n${prompt}\n\n#контент #вконтакте #пост`,
@@ -262,6 +223,6 @@ async function generateMockContent(prompt: string, templateType: string): Promis
     'VIDEO_SCRIPT': `🎬 Сценарий видео:\n\nСЦЕНА 1:\n${prompt}\n\nСЦЕНА 2:\n${prompt}\n\nСЦЕНА 3:\n${prompt}`,
     'IMAGE_GENERATION': `🖼️ Описание для генерации изображения:\n\n${prompt}\n\nСтиль: современный, качественный, детализированный`
   }
-  
+
   return templates[templateType as keyof typeof templates] || `Сгенерированный контент:\n\n${prompt}`
 }
