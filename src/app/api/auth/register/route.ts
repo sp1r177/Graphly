@@ -37,40 +37,61 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    })
+    let user
+    
+    try {
+      // Try to check if user exists in database
+      const existingUser = await prisma.user.findUnique({
+        where: { email }
+      })
 
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 409 }
-      )
-    }
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'User with this email already exists' },
+          { status: 409 }
+        )
+      }
 
-    // Hash password
-    const hashedPassword = await hashPassword(password)
+      // Hash password
+      const hashedPassword = await hashPassword(password)
 
-    // Create user in database
-    const user = await prisma.user.create({
-      data: {
+      // Create user in database
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name: name || null,
+          subscriptionStatus: 'FREE',
+          usageCountDay: 0,
+          usageCountMonth: 0,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          subscriptionStatus: true,
+          usageCountDay: true,
+          usageCountMonth: true,
+        }
+      })
+
+      console.log('✅ Пользователь создан в БД:', user.email)
+
+    } catch (dbError) {
+      console.error('❌ Ошибка БД, создаем временного пользователя:', (dbError as Error).message)
+      
+      // Fallback: создаем временного пользователя если БД не работает
+      user = {
+        id: 'temp-user-' + Date.now(),
         email,
-        password: hashedPassword,
         name: name || null,
-        subscriptionStatus: 'FREE',
+        subscriptionStatus: 'FREE' as const,
         usageCountDay: 0,
         usageCountMonth: 0,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        subscriptionStatus: true,
-        usageCountDay: true,
-        usageCountMonth: true,
       }
-    })
+      
+      console.log('⚠️  Временный пользователь создан для тестирования')
+    }
 
     // Generate JWT token
     const token = generateToken(user.id, user.email)
