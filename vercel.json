@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx prisma generate || echo 'Prisma generate failed, continuing...' && DISABLE_ESLINT_PLUGIN=true npm run build",
+  "buildCommand": "npx prisma generate && NEXT_DISABLE_ESLINT=1 next build",
   "installCommand": "npm install",
   "framework": "nextjs",
   "builds": [
