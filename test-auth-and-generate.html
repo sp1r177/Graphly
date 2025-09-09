@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест авторизации и генерации Graphly</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            flex: 1;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #cce7ff;
+            border: 1px solid #99d6ff;
+            color: #004085;
+        }
+        .status {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            background: #e9ecef;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Тест авторизации и генерации Graphly</h1>
+
+        <div id="apiStatus" class="status">Проверка статуса API...</div>
+
+        <!-- Тест регистрации -->
+        <div class="test-section">
+            <h2>👤 1. Тест регистрации</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="regEmail">Email:</label>
+                    <input type="email" id="regEmail" value="test@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Пароль:</label>
+                    <input type="password" id="regPassword" value="Test123456" required>
+                </div>
+                <div class="form-group">
+                    <label for="regName">Имя (опционально):</label>
+                    <input type="text" id="regName" value="Test User">
+                </div>
+                <button type="submit" id="registerBtn">📝 Зарегистрироваться</button>
+            </form>
+            <div id="registerResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Тест генерации -->
+        <div class="test-section">
+            <h2>🤖 2. Тест генерации контента</h2>
+            <form id="generateForm">
+                <div class="form-group">
+                    <label for="prompt">Текст для генерации:</label>
+                    <textarea id="prompt" placeholder="Введите текст для генерации контента..." required>Создай пост для ВКонтакте о новом продукте</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="templateType">Тип контента:</label>
+                    <select id="templateType" required>
+                        <option value="VK_POST">VK Пост</option>
+                        <option value="TELEGRAM_POST">Telegram Пост</option>
+                        <option value="EMAIL_CAMPAIGN">Email рассылка</option>
+                        <option value="BLOG_ARTICLE">Статья для блога</option>
+                        <option value="VIDEO_SCRIPT">Сценарий видео</option>
+                        <option value="IMAGE_GENERATION">Описание изображения</option>
+                    </select>
+                </div>
+                <button type="submit" id="generateBtn">🚀 Сгенерировать контент</button>
+            </form>
+            <div id="generateResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Быстрые тесты -->
+        <div class="test-section">
+            <h2>⚡ 3. Быстрые тесты</h2>
+            <div class="button-row">
+                <button onclick="quickRegister()">Быстрая регистрация</button>
+                <button onclick="quickGenerate()">Быстрая генерация</button>
+                <button onclick="testAPIStatus()">Проверить API</button>
+            </div>
+            <div id="quickResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const apiStatusDiv = document.getElementById('apiStatus');
+        const registerForm = document.getElementById('registerForm');
+        const registerResult = document.getElementById('registerResult');
+        const generateForm = document.getElementById('generateForm');
+        const generateResult = document.getElementById('generateResult');
+        const quickResult = document.getElementById('quickResult');
+
+        // Проверка статуса API при загрузке
+        async function checkAPIStatus() {
+            try {
+                console.log('🔍 Проверка статуса API...');
+                const response = await fetch('/api/generate');
+                const data = await response.json();
+
+                if (response.ok && data.status === 'OK') {
+                    apiStatusDiv.className = 'status success';
+                    apiStatusDiv.innerHTML = '✅ API работает! Переменные окружения:<br>' +
+                        Object.entries(data.environment)
+                            .map(([key, value]) => `• ${key}: ${value}`)
+                            .join('<br>');
+                    console.log('✅ API статус:', data);
+                } else {
+                    apiStatusDiv.className = 'status error';
+                    apiStatusDiv.textContent = '❌ API не работает: ' + (data.message || 'Неизвестная ошибка');
+                    console.error('❌ API статус:', data);
+                }
+            } catch (error) {
+                apiStatusDiv.className = 'status error';
+                apiStatusDiv.textContent = '❌ Сервер не доступен: ' + error.message;
+                console.error('❌ Ошибка проверки статуса:', error);
+            }
+        }
+
+        // Обработка регистрации
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const name = document.getElementById('regName').value;
+
+            registerResult.style.display = 'block';
+            registerResult.className = 'result info';
+            registerResult.textContent = '⏳ Регистрация...';
+
+            try {
+                console.log('📝 Отправка регистрации...');
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password, name })
+                });
+
+                console.log('📡 Статус регистрации:', response.status);
+                const data = await response.json();
+                console.log('📄 Ответ регистрации:', data);
+
+                if (response.ok) {
+                    registerResult.className = 'result success';
+                    registerResult.innerHTML = `<strong>✅ Регистрация успешна!</strong><br><br>` +
+                        `Email: ${data.user.email}<br>` +
+                        `Имя: ${data.user.name || 'Не указано'}<br>` +
+                        `Статус: ${data.user.subscriptionStatus}`;
+                } else {
+                    registerResult.className = 'result error';
+                    registerResult.innerHTML = `<strong>❌ Ошибка регистрации:</strong><br>${data.error || 'Неизвестная ошибка'}`;
+                }
+
+            } catch (error) {
+                console.error('❌ Ошибка регистрации:', error);
+                registerResult.className = 'result error';
+                registerResult.innerHTML = `<strong>❌ Сетевая ошибка:</strong><br>${error.message}`;
+            }
+        });
+
+        // Обработка генерации
+        generateForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const prompt = document.getElementById('prompt').value;
+            const templateType = document.getElementById('templateType').value;
+
+            generateResult.style.display = 'block';
+            generateResult.className = 'result info';
+            generateResult.textContent = '⏳ Генерация контента...';
+
+            try {
+                console.log('🚀 Отправка генерации...');
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt, templateType })
+                });
+
+                console.log('📡 Статус генерации:', response.status);
+                const data = await response.json();
+                console.log('📄 Ответ генерации:', data);
+
+                if (response.ok && data.text) {
+                    generateResult.className = 'result success';
+                    generateResult.innerHTML = `<strong>✅ Генерация успешна!</strong><br><br>${data.text}`;
+
+                    if (data.debug) {
+                        console.log('🐛 Отладочная информация:', data.debug);
+                    }
+                } else {
+                    generateResult.className = 'result error';
+                    generateResult.innerHTML = `<strong>❌ Ошибка генерации:</strong><br>${data.error || 'Неизвестная ошибка'}`;
+
+                    if (data.details) {
+                        console.log('📋 Детали ошибки:', data.details);
+                    }
+                }
+
+            } catch (error) {
+                console.error('❌ Ошибка генерации:', error);
+                generateResult.className = 'result error';
+                generateResult.innerHTML = `<strong>❌ Сетевая ошибка:</strong><br>${error.message}`;
+            }
+        });
+
+        // Быстрые функции
+        async function quickRegister() {
+            document.getElementById('regEmail').value = 'quick' + Date.now() + '@test.com';
+            document.getElementById('regPassword').value = 'Test123456';
+            document.getElementById('regName').value = 'Quick Test';
+            registerForm.dispatchEvent(new Event('submit'));
+        }
+
+        async function quickGenerate() {
+            document.getElementById('prompt').value = 'Создай короткий пост для ВКонтакте';
+            document.getElementById('templateType').value = 'VK_POST';
+            generateForm.dispatchEvent(new Event('submit'));
+        }
+
+        function testAPIStatus() {
+            checkAPIStatus();
+        }
+
+        // Проверяем статус при загрузке
+        checkAPIStatus();
+    </script>
+</body>
+</html>

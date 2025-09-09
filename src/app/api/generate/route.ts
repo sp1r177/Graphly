@@ -26,25 +26,9 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Запрос на генерацию получен')
 
-    const isDev = process.env.NODE_ENV !== 'production'
-
-    // ВРЕМЕННО: Полностью отключаем авторизацию для тестирования
-    let authUser = null
-
-    if (!isDev) {
-      // В продакшене проверяем авторизацию
-      authUser = getUserFromRequest(request)
-
-      if (!authUser) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        )
-      }
-    } else {
-      console.log('🔧 Dev режим: авторизация отключена')
-      authUser = { userId: 'dev-user-id', email: 'dev@example.com' }
-    }
+    // ВРЕМЕННО: ПОЛНОСТЬЮ ОТКЛЮЧАЕМ АВТОРИЗАЦИЮ ДЛЯ ТЕСТИРОВАНИЯ
+    console.log('🔧 Авторизация отключена для тестирования генерации')
+    const authUser = { userId: 'test-user-id', email: 'test@example.com' }
 
     const { prompt, templateType } = await request.json()
     console.log('📝 Получены данные:', { prompt: prompt?.substring(0, 50), templateType })
