@@ -21,25 +21,50 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email }
-    })
+    let user
+    
+    try {
+      // Try to find user in database
+      user = await prisma.user.findUnique({
+        where: { email }
+      })
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      )
-    }
+      if (!user) {
+        return NextResponse.json(
+          { error: 'Invalid credentials' },
+          { status: 401 }
+        )
+      }
 
-    // Verify password
-    const isValidPassword = await verifyPassword(password, user.password)
-    if (!isValidPassword) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      )
+      // Verify password
+      const isValidPassword = await verifyPassword(password, user.password)
+      if (!isValidPassword) {
+        return NextResponse.json(
+          { error: 'Invalid credentials' },
+          { status: 401 }
+        )
+      }
+
+    } catch (dbError) {
+      console.error('❌ БД недоступна для логина:', (dbError as Error).message)
+      
+      // Fallback: создаем временного пользователя для демо
+      if (email === 'demo@example.com' && password === 'demo123') {
+        console.log('⚠️  БД недоступна, используем демо-аккаунт')
+        user = {
+          id: 'demo-user-id',
+          email: 'demo@example.com',
+          name: 'Demo User',
+          subscriptionStatus: 'FREE',
+          usageCountDay: 0,
+          usageCountMonth: 0,
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'Database unavailable. Try demo account: demo@example.com / demo123' },
+          { status: 503 }
+        )
+      }
     }
 
     // Generate JWT token

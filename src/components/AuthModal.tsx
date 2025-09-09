@@ -174,7 +174,7 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
           <p className="text-sm text-gray-600">
             {mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}
             <button
-              onClick={() => window.location.href = mode === 'login' ? '/register' : '/login'}
+              onClick={() => window.location.href = mode === 'login' ? '/auth/register' : '/auth/login'}
               className="ml-1 text-blue-600 hover:text-blue-700 font-medium"
             >
               {mode === 'login' ? 'Зарегистрироваться' : 'Войти'}
