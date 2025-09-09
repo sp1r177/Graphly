@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Simulate AI generation (replace with actual AI service)
+    // Generate content using Yandex GPT API
     const generatedText = await generateContent(prompt, templateType)
     
     // ВРЕМЕННО: Отключаем сохранение в базу данных
@@ -118,6 +118,22 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Generation error:', error)
+    
+    // Handle specific error types
+    if (error instanceof Error) {
+      if (error.message.includes('API')) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 400 }
+        )
+      } else if (error.message.includes('лимит') || error.message.includes('limit')) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 429 }
+        )
+      }
+    }
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -135,19 +151,21 @@ async function generateContent(prompt: string, templateType: string): Promise<st
   console.log('Folder ID:', yandexFolderId ? '✅ Найден' : '❌ Не найден')
   console.log('API URL:', yandexApiUrl)
 
-  // Always use mock generation for now
-  console.log('Using mock generation')
-  return generateMockContent(prompt, templateType)
+  // Check if API credentials are available
+  if (!yandexApiKey || !yandexFolderId) {
+    console.warn('⚠️ Yandex API credentials not found, using mock generation')
+    return generateMockContent(prompt, templateType)
+  }
 
   try {
     // Create system prompt based on template type
     const systemPrompts = {
-      'VK_POST': 'Ты эксперт по созданию постов для ВКонтакте. Создай привлекательный пост с эмодзи и хештегами.',
-      'TELEGRAM_POST': 'Ты эксперт по созданию постов для Telegram. Создай информативный пост с эмодзи.',
-      'EMAIL_CAMPAIGN': 'Ты эксперт по email-маркетингу. Создай профессиональное email-письмо.',
-      'BLOG_ARTICLE': 'Ты эксперт по созданию статей для блога. Создай структурированную статью с заголовками.',
-      'VIDEO_SCRIPT': 'Ты эксперт по созданию сценариев для видео. Создай увлекательный сценарий с описанием сцен.',
-      'IMAGE_GENERATION': 'Ты эксперт по описанию изображений для AI-генерации. Создай детальное описание для генерации изображения.'
+      'VK_POST': 'Ты эксперт по созданию постов для ВКонтакте. Создай привлекательный пост с эмодзи и хештегами. Пост должен быть живым, интересным и вовлекающим.',
+      'TELEGRAM_POST': 'Ты эксперт по созданию постов для Telegram. Создай информативный пост с эмодзи. Пост должен быть структурированным и легко читаемым.',
+      'EMAIL_CAMPAIGN': 'Ты эксперт по email-маркетингу. Создай профессиональное email-письмо с привлекательной темой и структурированным содержанием.',
+      'BLOG_ARTICLE': 'Ты эксперт по созданию статей для блога. Создай структурированную статью с заголовками, подзаголовками и заключением.',
+      'VIDEO_SCRIPT': 'Ты эксперт по созданию сценариев для видео. Создай увлекательный сценарий с описанием сцен, диалогов и визуальных элементов.',
+      'IMAGE_GENERATION': 'Ты эксперт по описанию изображений для AI-генерации. Создай детальное описание для генерации изображения с указанием стиля, композиции и настроения.'
     }
 
     const systemPrompt = systemPrompts[templateType as keyof typeof systemPrompts] || 'Создай качественный контент на основе запроса.'
@@ -171,6 +189,9 @@ async function generateContent(prompt: string, templateType: string): Promise<st
       ]
     }
 
+    console.log('🚀 Sending request to Yandex GPT API...')
+    console.log('Request body:', JSON.stringify(requestBody, null, 2))
+
     const response = await fetch(yandexApiUrl, {
       method: 'POST',
       headers: {
@@ -180,23 +201,48 @@ async function generateContent(prompt: string, templateType: string): Promise<st
       body: JSON.stringify(requestBody)
     })
 
+    console.log('📡 Yandex GPT API response status:', response.status)
+
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Yandex GPT API error:', response.status, errorText)
-      throw new Error(`Yandex GPT API error: ${response.status}`)
+      console.error('❌ Yandex GPT API error:', response.status, errorText)
+      
+      // Handle specific error cases
+      if (response.status === 401) {
+        throw new Error('Неверный API ключ Yandex. Проверьте YANDEX_API_KEY в настройках.')
+      } else if (response.status === 403) {
+        throw new Error('Доступ запрещен. Проверьте права доступа к Yandex Cloud.')
+      } else if (response.status === 429) {
+        throw new Error('Превышен лимит запросов. Попробуйте позже.')
+      } else if (response.status === 500) {
+        throw new Error('Внутренняя ошибка сервера Yandex. Попробуйте позже.')
+      } else {
+        throw new Error(`Ошибка Yandex GPT API: ${response.status} - ${errorText}`)
+      }
     }
 
     const data = await response.json()
+    console.log('✅ Yandex GPT API response received:', JSON.stringify(data, null, 2))
     
     if (data.result && data.result.alternatives && data.result.alternatives[0]) {
-      return data.result.alternatives[0].message.text
+      const generatedText = data.result.alternatives[0].message.text
+      console.log('🎉 Generated text length:', generatedText.length)
+      return generatedText
     } else {
-      throw new Error('Invalid response from Yandex GPT API')
+      console.error('❌ Invalid response structure from Yandex GPT API:', data)
+      throw new Error('Неверная структура ответа от Yandex GPT API')
     }
 
   } catch (error) {
-    console.error('Yandex GPT API error:', error)
-    // Fall back to mock generation if API fails
+    console.error('❌ Yandex GPT API error:', error)
+    
+    // If it's a known error, don't fall back to mock
+    if (error instanceof Error && error.message.includes('API')) {
+      throw error
+    }
+    
+    // For network errors or unknown issues, fall back to mock
+    console.warn('⚠️ Falling back to mock generation due to error')
     return generateMockContent(prompt, templateType)
   }
 }

@@ -29,8 +29,36 @@
 - **Стили**: Tailwind CSS
 - **Иконки**: Lucide React
 - **База данных**: Prisma + PostgreSQL
+- **AI**: Yandex GPT 5.1 (Yandex Cloud API)
 - **Платежи**: Яндекс.Касса (готовность к интеграции)
 - **Деплой**: Vercel
+
+## 🤖 Настройка Yandex GPT
+
+Проект использует Yandex GPT 5.1 для генерации контента. Подробная инструкция по настройке доступна в [YANDEX_GPT_SETUP.md](./YANDEX_GPT_SETUP.md).
+
+### Быстрая настройка
+
+1. **Получите API ключи в Yandex Cloud:**
+   - Создайте проект в [Yandex Cloud](https://cloud.yandex.com)
+   - Получите `YANDEX_API_KEY` и `YANDEX_FOLDER_ID`
+
+2. **Настройте переменные окружения:**
+   ```bash
+   # Windows
+   setup-yandex-gpt.bat
+   
+   # Linux/Mac
+   ./setup-yandex-gpt.sh
+   ```
+
+3. **Или вручную создайте .env.local:**
+   ```env
+   YANDEX_API_KEY="your-api-key"
+   YANDEX_FOLDER_ID="your-folder-id"
+   DATABASE_URL="your-database-url"
+   JWT_SECRET="your-jwt-secret"
+   ```
 
 ## 🚀 Развертывание на Vercel
 
@@ -40,6 +68,7 @@
 - Node.js 18+ 
 - npm или yarn
 - Git
+- API ключи Yandex Cloud
 
 ### 2. Клонирование и установка зависимостей
 
