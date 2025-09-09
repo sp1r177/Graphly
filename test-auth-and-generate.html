@@ -115,6 +115,10 @@
         <!-- Тест регистрации -->
         <div class="test-section">
             <h2>👤 1. Тест регистрации</h2>
+            <div class="info" style="margin-bottom: 15px; padding: 10px; border-radius: 5px;">
+                <strong>ℹ️ Регистрация сохраняется в базу данных!</strong><br>
+                Используйте разные email для каждого теста
+            </div>
             <form id="registerForm">
                 <div class="form-group">
                     <label for="regEmail">Email:</label>
@@ -123,6 +127,7 @@
                 <div class="form-group">
                     <label for="regPassword">Пароль:</label>
                     <input type="password" id="regPassword" value="Test123456" required>
+                    <small style="color: #666;">Минимум 6 символов, буквы и цифры</small>
                 </div>
                 <div class="form-group">
                     <label for="regName">Имя (опционально):</label>
@@ -297,9 +302,11 @@
 
         // Быстрые функции
         async function quickRegister() {
-            document.getElementById('regEmail').value = 'quick' + Date.now() + '@test.com';
+            const timestamp = Date.now();
+            document.getElementById('regEmail').value = 'quick' + timestamp + '@test.com';
             document.getElementById('regPassword').value = 'Test123456';
-            document.getElementById('regName').value = 'Quick Test';
+            document.getElementById('regName').value = 'Quick Test ' + timestamp;
+            console.log('📧 Генерируем уникальный email:', document.getElementById('regEmail').value);
             registerForm.dispatchEvent(new Event('submit'));
         }
 

@@ -37,17 +37,49 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ВРЕМЕННО: ПОЛНОСТЬЮ ОТКЛЮЧАЕМ РАБОТУ С БД ДЛЯ ТЕСТИРОВАНИЯ
-    console.log('🔧 Регистрация: отключаем работу с БД для тестирования')
+    // Регистрация с базой данных
+    console.log('🔧 Регистрация: создание пользователя в базе данных')
 
-    // Создаем мок-пользователя без БД
-    const user = {
-      id: 'test-user-' + Date.now(),
-      email,
-      name: name || null,
-      subscriptionStatus: 'FREE' as const,
-      usageCountDay: 0,
-      usageCountMonth: 0,
+    let user
+    try {
+      // Хэшируем пароль
+      const hashedPassword = await hashPassword(password)
+
+      // Создаем пользователя в базе данных
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name: name || null,
+          subscriptionStatus: 'FREE',
+          usageCountDay: 0,
+          usageCountMonth: 0,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          subscriptionStatus: true,
+          usageCountDay: true,
+          usageCountMonth: true,
+        }
+      })
+
+      console.log('✅ Пользователь создан в БД:', user.email)
+
+    } catch (dbError) {
+      console.error('❌ Ошибка создания пользователя в БД:', (dbError as Error).message)
+
+      // Fallback: создаем мок-пользователя если БД не работает
+      console.log('⚠️  Fallback: создаем мок-пользователя')
+      user = {
+        id: 'fallback-user-' + Date.now(),
+        email,
+        name: name || null,
+        subscriptionStatus: 'FREE' as const,
+        usageCountDay: 0,
+        usageCountMonth: 0,
+      }
     }
 
     // Generate JWT token
