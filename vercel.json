@@ -1,16 +1,7 @@
 {
-  "buildCommand": "npx prisma generate && NEXT_DISABLE_ESLINT=1 next build",
-  "installCommand": "npm install",
+  "buildCommand": "npx prisma generate && next build",
   "framework": "nextjs",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "env": {
-    "NODE_ENV": "production",
-    "DISABLE_ESLINT_PLUGIN": "true",
-    "NEXT_DISABLE_ESLINT": "1"
+    "NODE_ENV": "production"
   }
 }

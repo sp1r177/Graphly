@@ -37,50 +37,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Регистрация с базой данных
-    console.log('🔧 Регистрация: создание пользователя в базе данных')
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    })
 
-    let user
-    try {
-      // Хэшируем пароль
-      const hashedPassword = await hashPassword(password)
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User with this email already exists' },
+        { status: 409 }
+      )
+    }
 
-      // Создаем пользователя в базе данных
-      user = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          name: name || null,
-          subscriptionStatus: 'FREE',
-          usageCountDay: 0,
-          usageCountMonth: 0,
-        },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          subscriptionStatus: true,
-          usageCountDay: true,
-          usageCountMonth: true,
-        }
-      })
+    // Hash password
+    const hashedPassword = await hashPassword(password)
 
-      console.log('✅ Пользователь создан в БД:', user.email)
-
-    } catch (dbError) {
-      console.error('❌ Ошибка создания пользователя в БД:', (dbError as Error).message)
-
-      // Fallback: создаем мок-пользователя если БД не работает
-      console.log('⚠️  Fallback: создаем мок-пользователя')
-      user = {
-        id: 'fallback-user-' + Date.now(),
+    // Create user in database
+    const user = await prisma.user.create({
+      data: {
         email,
+        password: hashedPassword,
         name: name || null,
-        subscriptionStatus: 'FREE' as const,
+        subscriptionStatus: 'FREE',
         usageCountDay: 0,
         usageCountMonth: 0,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        subscriptionStatus: true,
+        usageCountDay: true,
+        usageCountMonth: true,
       }
-    }
+    })
 
     // Generate JWT token
     const token = generateToken(user.id, user.email)

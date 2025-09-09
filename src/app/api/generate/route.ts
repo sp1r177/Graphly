@@ -26,16 +26,13 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Запрос на генерацию получен')
 
-    // Умная авторизация: проверяем только если есть токен
-    console.log('🔧 Проверка авторизации...')
-    let authUser = getUserFromRequest(request)
-
+    const authUser = getUserFromRequest(request)
+    
     if (!authUser) {
-      console.log('🔓 Пользователь не авторизован, создаем временного пользователя')
-      // Создаем временного пользователя для тестирования
-      authUser = { userId: 'guest-user-' + Date.now(), email: 'guest@example.com' }
-    } else {
-      console.log('🔐 Пользователь авторизован:', authUser.email)
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
     const { prompt, templateType } = await request.json()
@@ -48,36 +45,81 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('🤖 Начинаем генерацию контента...')
-    // ВРЕМЕННО: Принудительно используем реальную генерацию
-    const generatedText = await generateContent(prompt, templateType)
+    // Get user from database to check limits
+    const user = await prisma.user.findUnique({
+      where: { id: authUser.userId }
+    })
 
-    console.log('✅ Генерация завершена, длина текста:', generatedText.length)
-
-    // ВРЕМЕННО: Отключаем сохранение в базу данных
-    console.log('💾 Сохранение в БД отключено (временно)')
-
-    // Создаем мок-генерацию
-    const generation = {
-      id: 'test-generation-' + Date.now(),
-      timestamp: new Date()
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
     }
 
-    const result = {
-      id: generation.id,
-      text: generatedText,
-      templateType,
-      timestamp: generation.timestamp,
-      debug: {
-        promptLength: prompt.length,
-        textLength: generatedText.length,
-        isDev,
-        hasAuth: !!authUser
+    // Check daily usage limit for free users
+    if (user.subscriptionStatus === 'FREE') {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      const lastGeneration = user.lastGenerationDate
+      const lastGenerationDate = lastGeneration ? new Date(lastGeneration) : null
+      
+      if (!lastGenerationDate || lastGenerationDate < today) {
+        // Reset daily count for new day
+        await prisma.user.update({
+          where: { id: authUser.userId },
+          data: { usageCountDay: 0 }
+        })
+      }
+      
+      if (user.usageCountDay >= 10) {
+        return NextResponse.json(
+          { error: 'Daily generation limit reached. Upgrade to Pro for unlimited generations.' },
+          { status: 429 }
+        )
       }
     }
 
-    console.log('📤 Отправляем ответ')
-    return NextResponse.json(result)
+    // Check monthly usage limit for Pro users
+    if (user.subscriptionStatus === 'PRO') {
+      if (user.usageCountMonth >= 100) {
+        return NextResponse.json(
+          { error: 'Monthly generation limit reached. Upgrade to Ultra for unlimited generations.' },
+          { status: 429 }
+        )
+      }
+    }
+
+    // Generate content using Yandex GPT API
+    const generatedText = await generateContent(prompt, templateType)
+    
+    // Save generation to database
+    const generation = await prisma.generation.create({
+      data: {
+        userId: authUser.userId,
+        prompt,
+        outputText: generatedText,
+        templateType,
+      }
+    })
+
+    // Update user usage count
+    await prisma.user.update({
+      where: { id: authUser.userId },
+      data: {
+        usageCountDay: { increment: 1 },
+        usageCountMonth: { increment: 1 },
+        lastGenerationDate: new Date()
+      }
+    })
+
+    return NextResponse.json({
+      id: generation.id,
+      text: generatedText,
+      templateType,
+      timestamp: generation.timestamp
+    })
 
   } catch (error) {
     console.error('❌ Ошибка генерации:', error)
