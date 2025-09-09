@@ -13,8 +13,15 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
-// Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || 'https://tlorolxxxyztzrjlsjbwi.supabase.co'
+// Supabase client (create only if both URL and KEY are valid)
+const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_ANON_KEY
 
-export const supabase = supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
+function isValidHttpUrl(url?: string) {
+  if (!url) return false
+  return url.startsWith('http://') || url.startsWith('https://')
+}
+
+export const supabase = (isValidHttpUrl(supabaseUrl) && !!supabaseKey)
+  ? createClient(supabaseUrl as string, supabaseKey as string)
+  : null
