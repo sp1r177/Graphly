@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const isDev = process.env.NODE_ENV !== 'production'
     // Добавляем диагностику
     console.log('🔍 Generate API Debug:')
     console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✅ Найден' : '❌ Не найден')
@@ -33,13 +34,18 @@ export async function POST(request: NextRequest) {
     console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Найден' : '❌ Не найден')
     console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? '✅ Найден' : '❌ Не найден')
     
-    const authUser = getUserFromRequest(request)
+    let authUser = getUserFromRequest(request)
     
     if (!authUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      if (isDev) {
+        console.warn('Auth missing in dev, using mock user')
+        authUser = { userId: 'dev-user-id', email: 'dev@example.com' }
+      } else {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        )
+      }
     }
 
     const { prompt, templateType } = await request.json()
@@ -51,8 +57,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ВРЕМЕННО: Отключаем базу данных
-    console.log('Generation attempt (DB disabled):', authUser.userId)
+    // ВРЕМЕННО: Отключаем модификации базы данных
+    console.log('Generation attempt (DB writes disabled):', authUser.userId)
     
     // Создаем мок-пользователя
     const user = {
@@ -71,11 +77,7 @@ export async function POST(request: NextRequest) {
       const lastGenerationDate = lastGeneration ? new Date(lastGeneration) : null
       
       if (!lastGenerationDate || lastGenerationDate < today) {
-        // Reset daily count for new day
-        await prisma.user.update({
-          where: { id: authUser.userId },
-          data: { usageCountDay: 0 }
-        })
+        // Reset daily count for new day (local only, DB writes disabled)
         user.usageCountDay = 0
       }
       

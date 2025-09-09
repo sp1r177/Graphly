@@ -37,17 +37,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ВРЕМЕННО: Отключаем базу данных
-    console.log('Registration attempt (DB disabled):', email)
-    
-    // Создаем мок-пользователя
-    const user = {
-      id: 'mock-user-id',
-      email,
-      name: name || null,
-      subscriptionStatus: 'FREE' as const,
-      usageCountDay: 0,
-      usageCountMonth: 0,
+    const isDev = process.env.NODE_ENV !== 'production'
+    let user
+    try {
+      // Попытка создать реального пользователя в БД
+      const hashed = await hashPassword(password)
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: hashed,
+          name: name || null,
+          subscriptionStatus: 'FREE',
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          subscriptionStatus: true,
+          usageCountDay: true,
+          usageCountMonth: true,
+        }
+      })
+    } catch (dbError) {
+      console.warn('DB create user failed, fallback to mock (dev only):', (dbError as Error).message)
+      if (!isDev) {
+        throw dbError
+      }
+      user = {
+        id: 'mock-user-id',
+        email,
+        name: name || null,
+        subscriptionStatus: 'FREE' as const,
+        usageCountDay: 0,
+        usageCountMonth: 0,
+      }
     }
 
     // Generate JWT token
