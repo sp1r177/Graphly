@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { hashPassword, generateToken, validateEmail, validatePassword } from '@/lib/auth'
-import crypto from 'crypto'
+import { randomBytes } from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate email verification token
-    const emailVerificationToken = crypto.randomBytes(32).toString('hex')
+    const emailVerificationToken = randomBytes(32).toString('hex')
     
     // Hash password and create user
     const hashedPassword = await hashPassword(password)
