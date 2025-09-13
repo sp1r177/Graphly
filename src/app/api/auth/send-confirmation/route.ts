@@ -78,16 +78,19 @@ export async function POST(request: NextRequest) {
 
     const confirmationUrl = linkData.action_link
 
-    // Отправка через UniSender API
-    // Unisender ожидает x-www-form-urlencoded и параметр format=json
+    // Формируем готовый HTML с правильной ссылкой
+    const htmlWithUrl = htmlTemplate.replace(/\$\{confirmationUrl\}/g, confirmationUrl)
+
+    // Отправка через UniSender API (x-www-form-urlencoded + format=json)
     const params = new URLSearchParams()
     params.set('api_key', UNISENDER_API_KEY)
     params.set('email', email)
     params.set('sender_name', 'Graphly')
     params.set('sender_email', UNISENDER_SENDER_EMAIL)
     params.set('subject', 'Подтверждение регистрации в Graphly')
-    params.set('body', htmlTemplate.replace('${confirmationUrl}', confirmationUrl))
-    // params.set('list_id', '1') // укажите при необходимости существующий список
+    params.set('body', htmlWithUrl)
+    params.set('body_type', 'html')
+    // params.set('list_id', '1') // при необходимости
 
     const response = await fetch('https://api.unisender.com/ru/api/sendEmail?format=json', {
       method: 'POST',
