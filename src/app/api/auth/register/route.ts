@@ -12,7 +12,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await signUp(email, password, name)
+    // Формируем абсолютный URL редиректа для письма
+    const origin = request.headers.get('origin') || process.env.SITE_URL || 'http://localhost:3000'
+    const redirectTo = `${origin.replace(/\/$/, '')}/auth/callback`
+
+    const result = await signUp(email, password, name, redirectTo)
 
     if (result.needsEmailConfirmation) {
       return NextResponse.json({

@@ -2,16 +2,17 @@ import { supabase, createUserProfile, getUserProfile } from './supabase'
 import { NextRequest } from 'next/server'
 
 // Регистрация пользователя
-export async function signUp(email: string, password: string, name?: string) {
+export async function signUp(email: string, password: string, name?: string, redirectTo?: string) {
   if (!supabase) {
     throw new Error('Supabase не настроен. Обратитесь к администратору.')
   }
 
+  // Сначала создаем пользователя без подтверждения email
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback`,
+      emailRedirectTo: redirectTo || `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback`,
       data: {
         name: name || ''
       }
@@ -20,9 +21,25 @@ export async function signUp(email: string, password: string, name?: string) {
 
   if (error) throw error
 
-  // Создаем профиль пользователя после регистрации
+  // Если пользователь создан, но email не подтвержден - отправляем красивое письмо
   if (data.user && !data.user.email_confirmed_at) {
-    // Пользователь создан, но email не подтвержден
+    try {
+      // Отправляем красивое письмо через UniSender
+      const confirmationUrl = redirectTo || `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback`
+      await fetch('/api/auth/send-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          confirmationUrl,
+          name
+        })
+      })
+    } catch (emailError) {
+      console.error('Failed to send custom confirmation email:', emailError)
+      // Не прерываем процесс, Supabase отправит стандартное письмо
+    }
+
     return {
       user: data.user,
       session: data.session,
