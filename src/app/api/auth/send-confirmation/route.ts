@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 const UNISENDER_API_KEY = process.env.UNISENDER_API_KEY
 const UNISENDER_SENDER_EMAIL = process.env.UNISENDER_SENDER_EMAIL || 'noreply@unisender.com'
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,24 +54,45 @@ export async function POST(request: NextRequest) {
       </html>
     `
 
-    // Создаем простую ссылку подтверждения
-    const confirmationUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback?token=confirm&type=signup&email=${encodeURIComponent(email)}`
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
+    }
+
+    // Генерируем action_link (официальный линк подтверждения) через Admin API
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const siteUrl = process.env.SITE_URL || 'http://localhost:3000'
+    const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback`
+
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: 'signup',
+      email,
+      options: {
+        redirectTo,
+      },
+    })
+
+    if (linkError || !linkData?.action_link) {
+      console.error('generateLink error:', linkError)
+      return NextResponse.json({ error: 'Failed to generate confirmation link' }, { status: 500 })
+    }
+
+    const confirmationUrl = linkData.action_link
 
     // Отправка через UniSender API
-    const response = await fetch('https://api.unisender.com/ru/api/sendEmail', {
+    // Unisender ожидает x-www-form-urlencoded и параметр format=json
+    const params = new URLSearchParams()
+    params.set('api_key', UNISENDER_API_KEY)
+    params.set('email', email)
+    params.set('sender_name', 'Graphly')
+    params.set('sender_email', UNISENDER_SENDER_EMAIL)
+    params.set('subject', 'Подтверждение регистрации в Graphly')
+    params.set('body', htmlTemplate.replace('${confirmationUrl}', confirmationUrl))
+    // params.set('list_id', '1') // укажите при необходимости существующий список
+
+    const response = await fetch('https://api.unisender.com/ru/api/sendEmail?format=json', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        api_key: UNISENDER_API_KEY,
-        email: email,
-        sender_name: 'Graphly',
-        sender_email: UNISENDER_SENDER_EMAIL,
-        subject: 'Подтверждение регистрации в Graphly',
-        body: htmlTemplate.replace('${confirmationUrl}', confirmationUrl),
-        list_id: 1
-      })
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
     })
 
     const result = await response.json()
