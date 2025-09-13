@@ -83,8 +83,26 @@ export async function POST(request: NextRequest) {
     return response
   } catch (error) {
     console.error('Registration error:', error)
+    
+    // Handle specific Prisma errors
+    if (error instanceof Error) {
+      if (error.message.includes('Unique constraint')) {
+        return NextResponse.json(
+          { error: 'Пользователь с таким email уже существует' },
+          { status: 409 }
+        )
+      }
+      
+      if (error.message.includes('Database')) {
+        return NextResponse.json(
+          { error: 'Ошибка подключения к базе данных. Попробуйте позже.' },
+          { status: 500 }
+        )
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Внутренняя ошибка сервера. Попробуйте позже.' },
       { status: 500 }
     )
   }

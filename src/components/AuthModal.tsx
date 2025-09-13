@@ -18,10 +18,12 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError('')
 
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register'
@@ -33,18 +35,22 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
         body: JSON.stringify(formData),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
         // Handle successful auth
+        if (mode === 'register') {
+          alert('Регистрация прошла успешно! Теперь вы можете войти в систему.')
+        }
         onClose()
         // Refresh page or update user state
         window.location.reload()
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Authentication failed')
+        setError(data.error || 'Ошибка аутентификации')
       }
     } catch (error) {
       console.error('Auth error:', error)
-      alert(mode === 'login' ? 'Ошибка входа. Проверьте email и пароль.' : 'Ошибка регистрации. Попробуйте еще раз.')
+      setError('Ошибка подключения. Проверьте интернет-соединение.')
     } finally {
       setIsSubmitting(false)
     }
@@ -82,6 +88,13 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
             }
           </p>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
