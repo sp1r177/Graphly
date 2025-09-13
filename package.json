@@ -35,7 +35,8 @@
     "@types/jsonwebtoken": "^9.0.4",
     "next-auth": "^4.24.5",
     "react-i18next": "^13.3.1",
-    "i18next": "^23.6.0"
+    "i18next": "^23.6.0",
+    "@supabase/supabase-js": "^2.38.0"
   },
   "devDependencies": {
     "@types/node": "^20.8.0",

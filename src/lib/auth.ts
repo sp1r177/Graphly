@@ -1,46 +1,109 @@
-import jwt from 'jsonwebtoken'
-import bcrypt from 'bcryptjs'
+import { supabase, createUserProfile, getUserProfile } from './supabase'
 import { NextRequest } from 'next/server'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
-const SALT_ROUNDS = 12
+// Регистрация пользователя
+export async function signUp(email: string, password: string, name?: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+      data: {
+        name: name || ''
+      }
+    }
+  })
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, SALT_ROUNDS)
-}
+  if (error) throw error
 
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword)
-}
+  // Создаем профиль пользователя после регистрации
+  if (data.user && !data.user.email_confirmed_at) {
+    // Пользователь создан, но email не подтвержден
+    return {
+      user: data.user,
+      session: data.session,
+      needsEmailConfirmation: true
+    }
+  }
 
-export function generateToken(userId: string, email: string): string {
-  return jwt.sign(
-    { userId, email },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  )
-}
+  if (data.user) {
+    try {
+      await createUserProfile(data.user.id, email, name)
+    } catch (profileError) {
+      console.error('Error creating user profile:', profileError)
+      // Не прерываем процесс регистрации из-за ошибки профиля
+    }
+  }
 
-export function verifyToken(token: string): { userId: string; email: string } | null {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string }
-    return decoded
-  } catch (error) {
-    return null
+  return {
+    user: data.user,
+    session: data.session,
+    needsEmailConfirmation: false
   }
 }
 
-export function getUserFromRequest(request: NextRequest): { userId: string; email: string } | null {
+// Вход пользователя
+export async function signIn(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  })
+
+  if (error) throw error
+
+  return {
+    user: data.user,
+    session: data.session
+  }
+}
+
+// Выход пользователя
+export async function signOut() {
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
+}
+
+// Получение текущего пользователя
+export async function getCurrentUser() {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error) throw error
+  return user
+}
+
+// Получение сессии
+export async function getSession() {
+  const { data: { session }, error } = await supabase.auth.getSession()
+  if (error) throw error
+  return session
+}
+
+// Сброс пароля
+export async function resetPassword(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/reset-password`
+  })
+  if (error) throw error
+}
+
+// Обновление пароля
+export async function updatePassword(newPassword: string) {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword
+  })
+  if (error) throw error
+}
+
+// Получение пользователя из запроса (для API роутов)
+export async function getUserFromRequest(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
-  const cookieToken = request.cookies.get('auth-token')?.value
+  const token = authHeader?.replace('Bearer ', '')
 
-  const token = authHeader?.replace('Bearer ', '') || cookieToken
+  if (!token) return null
 
-  if (!token) {
-    return null
-  }
+  const { data: { user }, error } = await supabase.auth.getUser(token)
+  if (error || !user) return null
 
-  return verifyToken(token)
+  return user
 }
 
 export function validateEmail(email: string): boolean {

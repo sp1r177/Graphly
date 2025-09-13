@@ -1,8 +1,9 @@
 'use client'
 
 import { Button, Input, Card } from '@/components/ui'
-import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
+import { X, Mail, Lock, User, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { useState } from 'react'
+import { signUp, signIn } from '@/lib/auth'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -18,33 +19,49 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError('')
 
     try {
-      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register'
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (response.ok) {
-        // Handle successful auth
-        onClose()
-        // Refresh page or update user state
-        window.location.reload()
+      if (mode === 'register') {
+        const result = await signUp(formData.email, formData.password, formData.name)
+        
+        if (result.needsEmailConfirmation) {
+          setEmailSent(true)
+        } else {
+          // Автоматический вход после регистрации
+          onClose()
+          window.location.reload()
+        }
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Authentication failed')
+        await signIn(formData.email, formData.password)
+        onClose()
+        window.location.reload()
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auth error:', error)
-      alert(mode === 'login' ? 'Ошибка входа. Проверьте email и пароль.' : 'Ошибка регистрации. Попробуйте еще раз.')
+      let errorMessage = 'Произошла ошибка'
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = 'Неверный email или пароль'
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Пожалуйста, подтвердите email перед входом'
+      } else if (error.message?.includes('User already registered')) {
+        errorMessage = 'Пользователь с таким email уже зарегистрирован'
+      } else if (error.message?.includes('Password should be at least 6 characters')) {
+        errorMessage = 'Пароль должен содержать минимум 6 символов'
+      } else if (error.message?.includes('Invalid email')) {
+        errorMessage = 'Некорректный формат email'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      setError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
