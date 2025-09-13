@@ -21,25 +21,8 @@ export async function signUp(email: string, password: string, name?: string, red
 
   if (error) throw error
 
-  // Если пользователь создан, но email не подтвержден - отправляем красивое письмо
+  // Если пользователь создан, но email не подтвержден
   if (data.user && !data.user.email_confirmed_at) {
-    try {
-      // Отправляем красивое письмо через UniSender
-      const confirmationUrl = redirectTo || `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback`
-      await fetch('/api/auth/send-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          confirmationUrl,
-          name
-        })
-      })
-    } catch (emailError) {
-      console.error('Failed to send custom confirmation email:', emailError)
-      // Не прерываем процесс, Supabase отправит стандартное письмо
-    }
-
     return {
       user: data.user,
       session: data.session,

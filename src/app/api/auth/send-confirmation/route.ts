@@ -7,7 +7,15 @@ export async function POST(request: NextRequest) {
   try {
     const { email, confirmationUrl, name } = await request.json()
 
+    console.log('Send confirmation request:', {
+      email,
+      hasApiKey: !!UNISENDER_API_KEY,
+      hasSenderEmail: !!UNISENDER_SENDER_EMAIL,
+      confirmationUrl
+    })
+
     if (!UNISENDER_API_KEY) {
+      console.error('UniSender API key not found')
       return NextResponse.json({ error: 'UniSender not configured' }, { status: 500 })
     }
 
