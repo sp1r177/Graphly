@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
       </html>
     `
 
+    // Создаем простую ссылку подтверждения
+    const confirmationUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback?token=confirm&type=signup&email=${encodeURIComponent(email)}`
+
     // Отправка через UniSender API
     const response = await fetch('https://api.unisender.com/ru/api/sendEmail', {
       method: 'POST',
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
         sender_name: 'Graphly',
         sender_email: UNISENDER_SENDER_EMAIL,
         subject: 'Подтверждение регистрации в Graphly',
-        body: htmlTemplate,
+        body: htmlTemplate.replace('${confirmationUrl}', confirmationUrl),
         list_id: 1
       })
     })

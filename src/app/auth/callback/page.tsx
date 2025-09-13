@@ -12,54 +12,40 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Обмениваем код из URL на сессию (важно для подтверждения email)
-        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href)
-        
-        if (error) {
-          console.error('Auth callback error:', error)
-          setStatus('error')
-          setMessage('Ошибка подтверждения email')
-          return
-        }
+        // Получаем токен из URL параметров
+        const urlParams = new URLSearchParams(window.location.search)
+        const token = urlParams.get('token')
+        const type = urlParams.get('type')
 
-        if (data.session?.user) {
-          const user = data.session.user
+        if (type === 'signup' && token === 'confirm') {
+          // Простое подтверждение - помечаем email как подтвержденный
+          const email = urlParams.get('email')
           
-          // Создаем профиль пользователя, если он еще не создан
-          try {
-            await createUserProfile(
-              user.id, 
-              user.email!, 
-              user.user_metadata?.name || ''
-            )
-          } catch (profileError: any) {
-            // Если профиль уже существует, это нормально
-            if (!profileError.message?.includes('duplicate key')) {
-              console.error('Error creating user profile:', profileError)
+          if (email) {
+            // Устанавливаем cookie для авторизации
+            try {
+              await fetch('/api/auth/confirm-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+              })
+            } catch (cookieError) {
+              console.error('Failed to confirm email:', cookieError)
             }
+            
+            setStatus('success')
+            setMessage('Email успешно подтвержден! Перенаправляем...')
+            
+            setTimeout(() => {
+              router.push('/')
+            }, 2000)
+          } else {
+            setStatus('error')
+            setMessage('Неверная ссылка подтверждения')
           }
-
-          // Устанавливаем httpOnly cookie с access_token через серверный эндпоинт
-          try {
-            await fetch('/api/auth/set-cookie', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ accessToken: data.session.access_token })
-            })
-          } catch (cookieError) {
-            console.error('Failed to set cookie:', cookieError)
-          }
-          
-          setStatus('success')
-          setMessage('Email успешно подтвержден! Перенаправляем...')
-          
-          // Перенаправляем на главную страницу через 2 секунды
-          setTimeout(() => {
-            router.push('/')
-          }, 2000)
         } else {
           setStatus('error')
-          setMessage('Не удалось получить данные пользователя')
+          setMessage('Неверная ссылка подтверждения')
         }
       } catch (error) {
         console.error('Unexpected error:', error)

@@ -7,12 +7,11 @@ export async function signUp(email: string, password: string, name?: string, red
     throw new Error('Supabase не настроен. Обратитесь к администратору.')
   }
 
-  // Сначала создаем пользователя без подтверждения email
+  // Создаем пользователя БЕЗ подтверждения email (отключаем в Supabase)
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: redirectTo || `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback`,
       data: {
         name: name || ''
       }
@@ -21,28 +20,19 @@ export async function signUp(email: string, password: string, name?: string, red
 
   if (error) throw error
 
-  // Если пользователь создан, но email не подтвержден
-  if (data.user && !data.user.email_confirmed_at) {
-    return {
-      user: data.user,
-      session: data.session,
-      needsEmailConfirmation: true
-    }
-  }
-
+  // Создаем профиль пользователя
   if (data.user) {
     try {
       await createUserProfile(data.user.id, email, name)
     } catch (profileError) {
       console.error('Error creating user profile:', profileError)
-      // Не прерываем процесс регистрации из-за ошибки профиля
     }
   }
 
   return {
     user: data.user,
     session: data.session,
-    needsEmailConfirmation: false
+    needsEmailConfirmation: true // Всегда нужна отправка через UniSender
   }
 }
 
