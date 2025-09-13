@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { signIn } from '@/lib/auth'
-import { getUserProfile } from '@/lib/supabase'
+import { signIn } from '@/lib/auth-simple'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,23 +21,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Получаем профиль пользователя
-    let userProfile = null
-    try {
-      userProfile = await getUserProfile(result.user.id)
-    } catch (profileError) {
-      console.error('Error fetching user profile:', profileError)
-    }
-
     return NextResponse.json({
       message: 'Login successful',
       user: {
         id: result.user.id,
         email: result.user.email,
-        name: result.user.user_metadata?.name || userProfile?.name,
-        subscriptionStatus: userProfile?.subscription_status || 'FREE',
-        usageCountDay: userProfile?.usage_count_day || 0,
-        usageCountMonth: userProfile?.usage_count_month || 0,
+        name: result.user.user_metadata?.name,
+        subscriptionStatus: 'FREE',
+        usageCountDay: 0,
+        usageCountMonth: 0,
       }
     })
   } catch (error: any) {
