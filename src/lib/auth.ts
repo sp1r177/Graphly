@@ -3,6 +3,11 @@ import { NextRequest } from 'next/server'
 
 // Регистрация пользователя
 export async function signUp(email: string, password: string, name?: string) {
+  // Проверяем наличие переменных окружения
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error('Supabase не настроен. Обратитесь к администратору.')
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -44,6 +49,11 @@ export async function signUp(email: string, password: string, name?: string) {
 
 // Вход пользователя
 export async function signIn(email: string, password: string) {
+  // Проверяем наличие переменных окружения
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error('Supabase не настроен. Обратитесь к администратору.')
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password
