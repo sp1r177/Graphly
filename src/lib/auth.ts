@@ -3,8 +3,7 @@ import { NextRequest } from 'next/server'
 
 // Регистрация пользователя
 export async function signUp(email: string, password: string, name?: string) {
-  // Проверяем наличие переменных окружения
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!supabase) {
     throw new Error('Supabase не настроен. Обратитесь к администратору.')
   }
 
@@ -49,8 +48,7 @@ export async function signUp(email: string, password: string, name?: string) {
 
 // Вход пользователя
 export async function signIn(email: string, password: string) {
-  // Проверяем наличие переменных окружения
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!supabase) {
     throw new Error('Supabase не настроен. Обратитесь к администратору.')
   }
 
@@ -69,12 +67,18 @@ export async function signIn(email: string, password: string) {
 
 // Выход пользователя
 export async function signOut() {
+  if (!supabase) {
+    throw new Error('Supabase не настроен. Обратитесь к администратору.')
+  }
   const { error } = await supabase.auth.signOut()
   if (error) throw error
 }
 
 // Получение текущего пользователя
 export async function getCurrentUser() {
+  if (!supabase) {
+    throw new Error('Supabase не настроен. Обратитесь к администратору.')
+  }
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error) throw error
   return user
@@ -82,6 +86,9 @@ export async function getCurrentUser() {
 
 // Получение сессии
 export async function getSession() {
+  if (!supabase) {
+    throw new Error('Supabase не настроен. Обратитесь к администратору.')
+  }
   const { data: { session }, error } = await supabase.auth.getSession()
   if (error) throw error
   return session
@@ -89,6 +96,9 @@ export async function getSession() {
 
 // Сброс пароля
 export async function resetPassword(email: string) {
+  if (!supabase) {
+    throw new Error('Supabase не настроен. Обратитесь к администратору.')
+  }
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/reset-password`
   })
@@ -97,6 +107,9 @@ export async function resetPassword(email: string) {
 
 // Обновление пароля
 export async function updatePassword(newPassword: string) {
+  if (!supabase) {
+    throw new Error('Supabase не настроен. Обратитесь к администратору.')
+  }
   const { error } = await supabase.auth.updateUser({
     password: newPassword
   })
@@ -105,6 +118,11 @@ export async function updatePassword(newPassword: string) {
 
 // Получение пользователя из запроса (для API роутов)
 export async function getUserFromRequest(request: NextRequest) {
+  if (!supabase) {
+    console.warn('Supabase не настроен, возвращаем null для пользователя')
+    return null
+  }
+
   const authHeader = request.headers.get('authorization')
   const token = authHeader?.replace('Bearer ', '')
 

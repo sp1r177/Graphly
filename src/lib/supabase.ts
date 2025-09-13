@@ -1,22 +1,33 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
-
-// Проверяем только в runtime, не во время сборки
-if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    console.warn('Missing Supabase environment variables in production')
+// Функция для получения переменных окружения
+const getSupabaseConfig = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!url || !key) {
+    console.warn('Supabase environment variables not found:', {
+      hasUrl: !!url,
+      hasKey: !!key,
+      nodeEnv: process.env.NODE_ENV
+    })
+    return null
   }
+  
+  return { url, key }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
-})
+// Создаем клиент только если переменные доступны
+const config = getSupabaseConfig()
+export const supabase = config 
+  ? createClient(config.url, config.key, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      }
+    })
+  : null
 
 // Типы для пользователя
 export interface UserProfile {
@@ -33,8 +44,7 @@ export interface UserProfile {
 
 // Функции для работы с профилем пользователя
 export const createUserProfile = async (userId: string, email: string, name?: string) => {
-  // Проверяем наличие переменных окружения
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!supabase) {
     console.warn('Supabase не настроен, пропускаем создание профиля')
     return null
   }
@@ -57,8 +67,7 @@ export const createUserProfile = async (userId: string, email: string, name?: st
 }
 
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
-  // Проверяем наличие переменных окружения
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!supabase) {
     console.warn('Supabase не настроен, возвращаем null для профиля')
     return null
   }
@@ -77,8 +86,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
 }
 
 export const updateUserProfile = async (userId: string, updates: Partial<UserProfile>) => {
-  // Проверяем наличие переменных окружения
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!supabase) {
     console.warn('Supabase не настроен, пропускаем обновление профиля')
     return null
   }
