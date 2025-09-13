@@ -71,8 +71,6 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         name: name || null,
-        emailVerified: false,
-        emailVerificationToken,
         subscriptionStatus: 'FREE',
         usageCountDay: 0,
         usageCountMonth: 0,
@@ -81,7 +79,6 @@ export async function POST(request: NextRequest) {
         id: true,
         email: true,
         name: true,
-        emailVerified: true,
         subscriptionStatus: true,
         usageCountDay: true,
         usageCountMonth: true,
@@ -91,14 +88,13 @@ export async function POST(request: NextRequest) {
     console.log('✅ Пользователь создан:', user)
 
     return NextResponse.json({
-      message: 'Регистрация прошла успешно! Проверьте почту для подтверждения email.',
+      message: 'Регистрация прошла успешно! Теперь вы можете войти.',
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        emailVerified: user.emailVerified
       },
-      verificationToken: emailVerificationToken // For testing
+      // no verification token in simplified flow
     })
 
   } catch (error) {

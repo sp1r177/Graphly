@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabase } from '@/lib/supabase'
 import { hashPassword, generateToken, validateEmail, validatePassword } from '@/lib/auth'
-import { randomBytes } from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,48 +42,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate email verification token
-    const emailVerificationToken = randomBytes(32).toString('hex')
-    
-    // Hash password and create user
+    // Hash password
     const hashedPassword = await hashPassword(password)
-    
-    const user = await prisma.user.create({
-      data: {
+
+    // Create user in Supabase table `users`
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        id: crypto.randomUUID(),
         email,
         password: hashedPassword,
         name: name || null,
-        emailVerified: false,
-        emailVerificationToken,
         subscriptionStatus: 'FREE',
         usageCountDay: 0,
         usageCountMonth: 0,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        emailVerified: true,
-        subscriptionStatus: true,
-        usageCountDay: true,
-        usageCountMonth: true,
-      }
-    })
+      })
+      .select('id,email,name,subscriptionStatus,usageCountDay,usageCountMonth')
+      .single()
 
-    // Send verification email (simplified for now)
-    console.log(`📧 Email verification token for ${email}: ${emailVerificationToken}`)
-    
-    // For now, we'll return success without auto-login
-    // User needs to verify email first
+    if (error) {
+      if (error.message.includes('duplicate key') || error.message.includes('unique')) {
+        return NextResponse.json(
+          { error: 'Пользователь с таким email уже существует' },
+          { status: 409 }
+        )
+      }
+      throw error
+    }
+
     return NextResponse.json({
-      message: 'Регистрация прошла успешно! Проверьте почту для подтверждения email.',
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        emailVerified: user.emailVerified
-      },
-      verificationToken: emailVerificationToken // For testing
+      message: 'Регистрация прошла успешно!',
+      user: data,
     })
   } catch (error) {
     console.error('Registration error:', error)

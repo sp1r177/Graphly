@@ -20,7 +20,6 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [verificationToken, setVerificationToken] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,12 +40,8 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
 
       if (response.ok) {
         if (mode === 'register') {
-          // Show success message and verification token for testing
-          setSuccess(data.message)
-          setVerificationToken(data.verificationToken)
-          // Don't close modal yet, show verification step
+          setSuccess(data.message || 'Регистрация прошла успешно! Теперь вы можете войти.')
         } else {
-          // Handle successful login
           onClose()
           window.location.reload()
         }
@@ -210,35 +205,7 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
             </div>
           </div>
 
-          {mode === 'register' && verificationToken ? (
-            <div className="space-y-4">
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-4">
-                  Для тестирования используйте этот токен подтверждения:
-                </p>
-                <div className="bg-gray-100 p-3 rounded-lg text-xs font-mono break-all">
-                  {verificationToken}
-                </div>
-              </div>
-              <Button
-                type="button"
-                onClick={handleVerifyEmail}
-                disabled={isSubmitting}
-                variant="primary"
-                size="lg"
-                className="w-full h-12 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Подтверждаем...
-                  </>
-                ) : (
-                  'Подтвердить Email'
-                )}
-              </Button>
-            </div>
-          ) : (
+          {
             <Button
               type="submit"
               disabled={isSubmitting}
@@ -255,7 +222,7 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
                 mode === 'login' ? 'Войти' : 'Зарегистрироваться'
               )}
             </Button>
-          )}
+          }
         </form>
 
         {/* Footer */}
