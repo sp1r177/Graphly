@@ -1,42 +1,103 @@
-// Тест генерации контента
-// Запустите: node test-generation.js
+const http = require('http');
 
-async function testGeneration() {
-  console.log('🧪 Тестирование генерации контента...\n');
+// Тест API генерации
+function testGenerationAPI() {
+  console.log('🧪 Тестируем API генерации...');
+  
+  const postData = JSON.stringify({
+    prompt: 'Создай пост для ВКонтакте про кофейню',
+    templateType: 'VK_POST'
+  });
 
-  try {
-    const response = await fetch('http://localhost:3000/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt: 'Создай пост для ВКонтакте о новом продукте',
-        templateType: 'VK_POST'
-      })
-    });
-
-    console.log('📡 Статус ответа:', response.status);
-    console.log('📡 Заголовки:', Object.fromEntries(response.headers.entries()));
-
-    const data = await response.json();
-    console.log('📄 Данные ответа:', JSON.stringify(data, null, 2));
-
-    if (data.error) {
-      console.log('❌ Ошибка:', data.error);
-    } else {
-      console.log('✅ Генерация успешна!');
-      console.log('📝 Сгенерированный текст:', data.text?.substring(0, 100) + '...');
+  const options = {
+    hostname: 'localhost',
+    port: 3000,
+    path: '/api/generate',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(postData)
     }
+  };
 
-  } catch (error) {
-    console.error('❌ Ошибка при тестировании:', error.message);
-    console.log('\n💡 Возможные причины:');
-    console.log('1. Сервер не запущен (npm run dev)');
-    console.log('2. Проблема с переменными окружения');
-    console.log('3. Ошибка в коде API роута');
-    console.log('4. Проблема с базой данных');
-  }
+  const req = http.request(options, (res) => {
+    console.log(`📡 Статус ответа: ${res.statusCode}`);
+    
+    let data = '';
+    res.on('data', (chunk) => {
+      data += chunk;
+    });
+    
+    res.on('end', () => {
+      try {
+        const response = JSON.parse(data);
+        console.log('✅ Ответ API:', JSON.stringify(response, null, 2));
+        
+        if (response.text) {
+          console.log('🎉 Генерация работает! Длина текста:', response.text.length);
+        } else {
+          console.log('❌ Текст не сгенерирован');
+        }
+      } catch (error) {
+        console.log('❌ Ошибка парсинга ответа:', error.message);
+        console.log('📄 Сырой ответ:', data);
+      }
+    });
+  });
+
+  req.on('error', (error) => {
+    console.log('❌ Ошибка запроса:', error.message);
+    console.log('💡 Убедитесь, что сервер запущен: npm run dev');
+  });
+
+  req.write(postData);
+  req.end();
 }
 
-testGeneration();
+// Тест статуса API
+function testAPIStatus() {
+  console.log('🔍 Проверяем статус API...');
+  
+  const options = {
+    hostname: 'localhost',
+    port: 3000,
+    path: '/api/generate',
+    method: 'GET'
+  };
+
+  const req = http.request(options, (res) => {
+    console.log(`📡 Статус API: ${res.statusCode}`);
+    
+    let data = '';
+    res.on('data', (chunk) => {
+      data += chunk;
+    });
+    
+    res.on('end', () => {
+      try {
+        const response = JSON.parse(data);
+        console.log('✅ Статус API:', JSON.stringify(response, null, 2));
+        
+        // Если API работает, тестируем генерацию
+        if (res.statusCode === 200) {
+          console.log('\n🚀 API работает, тестируем генерацию...');
+          setTimeout(testGenerationAPI, 1000);
+        }
+      } catch (error) {
+        console.log('❌ Ошибка парсинга статуса:', error.message);
+        console.log('📄 Сырой ответ:', data);
+      }
+    });
+  });
+
+  req.on('error', (error) => {
+    console.log('❌ API недоступен:', error.message);
+    console.log('💡 Запустите сервер: npm run dev');
+  });
+
+  req.end();
+}
+
+// Запускаем тесты
+console.log('🚀 Начинаем тестирование генерации контента...\n');
+testAPIStatus();
