@@ -66,58 +66,34 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Check usage limits based on subscription
-      const limits = {
-        'FREE': { daily: 1, monthly: 1 },
-        'PRO': { daily: 100, monthly: 100 }, // Старт: 1000 ₽/мес (100 генераций)
-        'ULTRA': { daily: 500, monthly: 500 } // Бизнес: 3000 ₽/мес (500 генераций)
-      }
-      
-      const userLimits = limits[user.subscriptionStatus as keyof typeof limits] || limits.FREE
-      
-      // Check daily limit
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      
-      const lastGeneration = user.lastGenerationDate
-      const lastGenerationDate = lastGeneration ? new Date(lastGeneration) : null
-      
-      if (!lastGenerationDate || lastGenerationDate < today) {
-        // Reset daily count for new day
-        try {
-          await prisma.user.update({
-            where: { id: authUser.userId },
-            data: { usageCountDay: 0 }
-          })
-          user.usageCountDay = 0
-        } catch (e) {
-          console.log('⚠️  БД недоступна, используем локальные лимиты')
-          user.usageCountDay = 0
+      // Check daily usage limit for free users
+      if (user.subscriptionStatus === 'FREE') {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        
+        const lastGeneration = user.lastGenerationDate
+        const lastGenerationDate = lastGeneration ? new Date(lastGeneration) : null
+        
+        if (!lastGenerationDate || lastGenerationDate < today) {
+          // Reset daily count for new day (try to update DB, fallback to local)
+          try {
+            await prisma.user.update({
+              where: { id: authUser.userId },
+              data: { usageCountDay: 0 }
+            })
+            user.usageCountDay = 0
+          } catch (e) {
+            console.log('⚠️  БД недоступна, используем локальные лимиты')
+            user.usageCountDay = 0
+          }
         }
-      }
-      
-      // Check if user exceeded daily limit
-      if (user.usageCountDay >= userLimits.daily) {
-        const errorMessage = user.subscriptionStatus === 'FREE' 
-          ? 'Дневной лимит генерации исчерпан (1 генерация/день). Обновите тариф для увеличения лимитов.'
-          : `Дневной лимит генерации исчерпан (${userLimits.daily} генераций/день). Лимит обновится завтра.`
         
-        return NextResponse.json(
-          { error: errorMessage },
-          { status: 429 }
-        )
-      }
-      
-      // Check if user exceeded monthly limit
-      if (user.usageCountMonth >= userLimits.monthly) {
-        const errorMessage = user.subscriptionStatus === 'FREE' 
-          ? 'Месячный лимит генерации исчерпан (1 генерация/месяц). Обновите тариф для увеличения лимитов.'
-          : `Месячный лимит генерации исчерпан (${userLimits.monthly} генераций/месяц). Обновите тариф для увеличения лимитов.`
-        
-        return NextResponse.json(
-          { error: errorMessage },
-          { status: 429 }
-        )
+        if (user.usageCountDay >= 10) {
+          return NextResponse.json(
+            { error: 'Daily generation limit reached. Upgrade to Pro for unlimited generations.' },
+            { status: 429 }
+          )
+        }
       }
 
       // Generate content using Yandex GPT API
