@@ -27,7 +27,7 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
     setError('')
 
     try {
-      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register-simple'
+      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register'
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
