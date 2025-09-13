@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const UNISENDER_API_KEY = process.env.UNISENDER_API_KEY
-const UNISENDER_SENDER_EMAIL = process.env.UNISENDER_SENDER_EMAIL || 'noreply@yourdomain.com'
+const UNISENDER_SENDER_EMAIL = process.env.UNISENDER_SENDER_EMAIL || 'noreply@unisender.com'
 
 export async function POST(request: NextRequest) {
   try {
