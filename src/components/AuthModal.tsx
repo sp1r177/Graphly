@@ -3,7 +3,7 @@
 import { Button, Input, Card } from '@/components/ui'
 import { X, Mail, Lock, User, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { useState } from 'react'
-import { signUp, signIn } from '@/lib/auth-simple'
+import { signUp, signIn } from '@/lib/auth'
 
 interface AuthModalProps {
   isOpen: boolean

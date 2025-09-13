@@ -11,7 +11,7 @@ export async function signUp(email: string, password: string, name?: string) {
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+      emailRedirectTo: `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback`,
       data: {
         name: name || ''
       }
@@ -100,7 +100,7 @@ export async function resetPassword(email: string) {
     throw new Error('Supabase не настроен. Обратитесь к администратору.')
   }
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/reset-password`
+    redirectTo: `${process.env.SITE_URL || 'http://localhost:3000'}/auth/reset-password`
   })
   if (error) throw error
 }
