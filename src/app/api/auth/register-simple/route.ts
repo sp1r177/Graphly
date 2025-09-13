@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabase } from '@/lib/supabase'
 import { hashPassword, validateEmail, validatePassword } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -40,9 +40,11 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     console.log('🔍 Проверяем существующего пользователя...')
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    })
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single()
 
     if (existingUser) {
       console.log('❌ Пользователь уже существует')
@@ -66,24 +68,23 @@ export async function POST(request: NextRequest) {
 
     // Create user
     console.log('👤 Создаем пользователя...')
-    const user = await prisma.user.create({
-      data: {
+    const { data: user, error } = await supabase
+      .from('users')
+      .insert({
+        id: crypto.randomUUID(),
         email,
         password: hashedPassword,
         name: name || null,
         subscriptionStatus: 'FREE',
         usageCountDay: 0,
         usageCountMonth: 0,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        subscriptionStatus: true,
-        usageCountDay: true,
-        usageCountMonth: true,
-      }
-    })
+      })
+      .select('id,email,name,subscriptionStatus,usageCountDay,usageCountMonth')
+      .single()
+
+    if (error) {
+      throw error
+    }
 
     console.log('✅ Пользователь создан:', user)
 
