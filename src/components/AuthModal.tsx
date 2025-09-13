@@ -76,6 +76,50 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
 
   if (!isOpen) return null
 
+  // Если email отправлен для подтверждения
+  if (emailSent) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-md p-8 relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X size={24} />
+          </button>
+
+          <div className="text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Проверьте вашу почту
+            </h2>
+            
+            <p className="text-gray-600 mb-6">
+              Мы отправили письмо с подтверждением на адрес{' '}
+              <span className="font-medium text-gray-900">{formData.email}</span>
+            </p>
+            
+            <p className="text-sm text-gray-500 mb-6">
+              Перейдите по ссылке в письме, чтобы подтвердить регистрацию и войти в аккаунт.
+            </p>
+
+            <Button
+              onClick={onClose}
+              variant="primary"
+              size="lg"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+            >
+              Понятно
+            </Button>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-md p-8 relative">
@@ -99,6 +143,13 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
             }
           </p>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">

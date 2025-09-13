@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromRequest, verifyPassword, hashPassword, validatePassword } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { getUserFromRequest, updatePassword, signIn } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function PUT(request: NextRequest) {
   try {
-    const authUser = getUserFromRequest(request)
+    const authUser = await getUserFromRequest(request)
     
     if (!authUser) {
       return NextResponse.json(
@@ -24,45 +23,35 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Validate new password
-    if (!validatePassword(newPassword)) {
+    // Validate new password length
+    if (newPassword.length < 6) {
       return NextResponse.json(
         { error: 'New password must be at least 6 characters long' },
         { status: 400 }
       )
     }
 
-    // Get current user with password
-    const user = await prisma.user.findUnique({
-      where: { id: authUser.userId },
-      select: { password: true }
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    // Verify current password
-    if (!verifyPassword(currentPassword, user.password)) {
+    // Verify current password by attempting to sign in
+    try {
+      await signIn(authUser.email!, currentPassword)
+    } catch (signInError) {
       return NextResponse.json(
         { error: 'Current password is incorrect' },
         { status: 400 }
       )
     }
 
-    // Hash new password
-    const hashedPassword = hashPassword(newPassword)
-
-    // Update password
-    await prisma.user.update({
-      where: { id: authUser.userId },
-      data: { password: hashedPassword }
-    })
-
-    return NextResponse.json({ message: 'Password updated successfully' })
+    // Update password using Supabase
+    try {
+      await updatePassword(newPassword)
+      return NextResponse.json({ message: 'Password updated successfully' })
+    } catch (updateError: any) {
+      console.error('Password update error:', updateError)
+      return NextResponse.json(
+        { error: updateError.message || 'Failed to update password' },
+        { status: 400 }
+      )
+    }
   } catch (error) {
     console.error('Password change error:', error)
     return NextResponse.json(

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { getUserFromRequest } from '@/lib/auth'
+import { getUserProfile } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const authUser = getUserFromRequest(request)
+    const authUser = await getUserFromRequest(request)
     
     if (!authUser) {
       return NextResponse.json(
@@ -15,29 +15,25 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get fresh user data from database
-    const user = await prisma.user.findUnique({
-      where: { id: authUser.userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        subscriptionStatus: true,
-        usageCountDay: true,
-        usageCountMonth: true,
-        lastGenerationDate: true,
-        createdAt: true,
-      }
-    })
+    // Get user profile from Supabase
+    const userProfile = await getUserProfile(authUser.id)
 
-    if (!user) {
+    if (!userProfile) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User profile not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(user)
+    return NextResponse.json({
+      id: authUser.id,
+      email: authUser.email,
+      name: authUser.user_metadata?.name || userProfile.name,
+      subscriptionStatus: userProfile.subscription_status,
+      usageCountDay: userProfile.usage_count_day,
+      usageCountMonth: userProfile.usage_count_month,
+      createdAt: userProfile.created_at,
+    })
   } catch (error) {
     console.error('Profile fetch error:', error)
     return NextResponse.json(
