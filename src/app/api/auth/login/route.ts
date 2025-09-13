@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { prisma } from '@/lib/db'
 import { verifyPassword, generateToken, validateEmail } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -21,28 +21,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find user in Supabase
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single()
-
-    if (error) {
-      return NextResponse.json(
-        { error: 'Ошибка базы данных' },
-        { status: 500 }
-      )
-    }
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email }
+    })
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Неверные учетные данные' },
+        { error: 'Invalid credentials' },
         { status: 401 }
       )
     }
-
-    // Skip email verification check for now to avoid 500s while setting up
 
     // Verify password
     const isValidPassword = await verifyPassword(password, user.password)

@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -15,8 +15,6 @@ model User {
   email            String   @unique
   password         String
   name             String?
-  emailVerified    Boolean  @default(false)
-  emailVerificationToken String?
   subscriptionStatus String  @default("FREE") // FREE, PRO, ULTRA
   usageCountDay    Int      @default(0)
   usageCountMonth  Int      @default(0)

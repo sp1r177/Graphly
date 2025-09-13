@@ -50,7 +50,11 @@ export function validateEmail(email: string): boolean {
 
 export function validatePassword(password: string): { valid: boolean; message?: string } {
   if (password.length < 6) {
-    return { valid: false, message: 'Пароль должен содержать минимум 6 символов' }
+    return { valid: false, message: 'Password must be at least 6 characters long' }
+  }
+  
+  if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+    return { valid: false, message: 'Password must contain uppercase, lowercase, and numeric characters' }
   }
   
   return { valid: true }

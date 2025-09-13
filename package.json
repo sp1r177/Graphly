@@ -29,7 +29,6 @@
     "tailwind-merge": "^1.14.0",
     "prisma": "^5.5.2",
     "@prisma/client": "^5.5.2",
-    "@supabase/supabase-js": "^2.45.2",
     "bcryptjs": "^2.4.3",
     "@types/bcryptjs": "^2.4.4",
     "jsonwebtoken": "^9.0.2",

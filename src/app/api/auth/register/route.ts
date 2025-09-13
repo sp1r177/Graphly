@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { prisma } from '@/lib/db'
 import { hashPassword, generateToken, validateEmail, validatePassword } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -30,74 +30,61 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user already exists in Supabase
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single()
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    })
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Пользователь с таким email уже существует' },
+        { error: 'User with this email already exists' },
         { status: 409 }
       )
     }
 
-    // Hash password
+    // Hash password and create user
     const hashedPassword = await hashPassword(password)
-
-    // Create user in Supabase table `users`
-    const { data, error } = await supabase
-      .from('users')
-      .insert({
-        id: crypto.randomUUID(),
+    
+    const user = await prisma.user.create({
+      data: {
         email,
         password: hashedPassword,
         name: name || null,
         subscriptionStatus: 'FREE',
         usageCountDay: 0,
         usageCountMonth: 0,
-      })
-      .select('id,email,name,subscriptionStatus,usageCountDay,usageCountMonth')
-      .single()
-
-    if (error) {
-      if (error.message.includes('duplicate key') || error.message.includes('unique')) {
-        return NextResponse.json(
-          { error: 'Пользователь с таким email уже существует' },
-          { status: 409 }
-        )
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        subscriptionStatus: true,
+        usageCountDay: true,
+        usageCountMonth: true,
       }
-      throw error
-    }
-
-    return NextResponse.json({
-      message: 'Регистрация прошла успешно!',
-      user: data,
     })
+
+    // Generate JWT token
+    const token = generateToken(user.id, user.email)
+
+    // Set HTTP-only cookie
+    const response = NextResponse.json({
+      message: 'User created successfully',
+      user
+    })
+
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    })
+
+    return response
   } catch (error) {
     console.error('Registration error:', error)
-    
-    // Handle specific Prisma errors
-    if (error instanceof Error) {
-      if (error.message.includes('Unique constraint')) {
-        return NextResponse.json(
-          { error: 'Пользователь с таким email уже существует' },
-          { status: 409 }
-        )
-      }
-      
-      if (error.message.includes('Database')) {
-        return NextResponse.json(
-          { error: 'Ошибка подключения к базе данных. Попробуйте позже.' },
-          { status: 500 }
-        )
-      }
-    }
-    
     return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера. Попробуйте позже.' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

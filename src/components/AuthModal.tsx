@@ -18,16 +18,13 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    setError('')
 
     try {
-      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register-simple'
+      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register'
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -36,21 +33,18 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
         body: JSON.stringify(formData),
       })
 
-      const data = await response.json()
-
       if (response.ok) {
-        if (mode === 'register') {
-          setSuccess(data.message || 'Регистрация прошла успешно! Теперь вы можете войти.')
-        } else {
-          onClose()
-          window.location.reload()
-        }
+        // Handle successful auth
+        onClose()
+        // Refresh page or update user state
+        window.location.reload()
       } else {
-        setError(data.error || 'Ошибка аутентификации')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Authentication failed')
       }
     } catch (error) {
       console.error('Auth error:', error)
-      setError('Ошибка подключения. Проверьте интернет-соединение.')
+      alert(mode === 'login' ? 'Ошибка входа. Проверьте email и пароль.' : 'Ошибка регистрации. Попробуйте еще раз.')
     } finally {
       setIsSubmitting(false)
     }
@@ -61,40 +55,6 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
       ...prev,
       [e.target.name]: e.target.value
     }))
-  }
-
-  const handleVerifyEmail = async () => {
-    if (!verificationToken) return
-    
-    setIsSubmitting(true)
-    setError('')
-    
-    try {
-      const response = await fetch('/api/auth/verify-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token: verificationToken })
-      })
-      
-      const data = await response.json()
-      
-      if (response.ok) {
-        setSuccess('Email успешно подтвержден! Вы авторизованы.')
-        setTimeout(() => {
-          onClose()
-          window.location.reload()
-        }, 2000)
-      } else {
-        setError(data.error || 'Ошибка подтверждения email')
-      }
-    } catch (error) {
-      console.error('Verification error:', error)
-      setError('Ошибка подключения. Попробуйте позже.')
-    } finally {
-      setIsSubmitting(false)
-    }
   }
 
   if (!isOpen) return null
@@ -122,20 +82,6 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
             }
           </p>
         </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-            {error}
-          </div>
-        )}
-
-        {/* Success Message */}
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
-            {success}
-          </div>
-        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -205,24 +151,22 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
             </div>
           </div>
 
-          {
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              variant="primary"
-              size="lg"
-              className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  {mode === 'login' ? 'Входим...' : 'Регистрируем...'}
-                </>
-              ) : (
-                mode === 'login' ? 'Войти' : 'Зарегистрироваться'
-              )}
-            </Button>
-          }
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            variant="primary"
+            size="lg"
+            className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                {mode === 'login' ? 'Входим...' : 'Регистрируем...'}
+              </>
+            ) : (
+              mode === 'login' ? 'Войти' : 'Зарегистрироваться'
+            )}
+          </Button>
         </form>
 
         {/* Footer */}

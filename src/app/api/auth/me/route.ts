@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { prisma } from '@/lib/db'
 import { getUserFromRequest } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
@@ -15,19 +15,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get fresh user data from Supabase
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id,email,name,subscriptionStatus,usageCountDay,usageCountMonth,lastGenerationDate,createdAt')
-      .eq('id', authUser.userId)
-      .single()
-
-    if (error) {
-      return NextResponse.json(
-        { error: 'Database error' },
-        { status: 500 }
-      )
-    }
+    // Get fresh user data from database
+    const user = await prisma.user.findUnique({
+      where: { id: authUser.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        subscriptionStatus: true,
+        usageCountDay: true,
+        usageCountMonth: true,
+        lastGenerationDate: true,
+        createdAt: true,
+      }
+    })
 
     if (!user) {
       return NextResponse.json(
