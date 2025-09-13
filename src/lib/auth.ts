@@ -7,44 +7,32 @@ export async function signUp(email: string, password: string, name?: string, red
     throw new Error('Supabase не настроен. Обратитесь к администратору.')
   }
 
-  // Регистрируем пользователя. Если подтверждение email в Supabase отключено,
-  // Supabase вернет активную сессию сразу.
+  const emailRedirectTo = (redirectTo || `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback`).replace(/\/$/, '')
+
+  // Стандартная регистрация с подтверждением email (Supabase отправляет письмо)
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo,
       data: { name: name || '' },
     }
   })
 
   if (error) throw error
 
-  let session = data.session
-  let user = data.user || null
-
-  // Если сессии нет (на случай нестандартных настроек), пробуем залогиниться сразу же
-  if (!session) {
-    const signInRes = await supabase.auth.signInWithPassword({ email, password })
-    if (signInRes.error) throw signInRes.error
-    session = signInRes.data.session
-    user = signInRes.data.user
-  }
-
-  // Создаем профиль пользователя (идемпотентно)
-  if (user) {
+  // Если пользователь уже подтвержден и вернулась сессия — создаем профиль
+  if (data.user && data.session) {
     try {
-      await createUserProfile(user.id, email, name)
+      await createUserProfile(data.user.id, email, name)
     } catch (profileError) {
-      // Профиль может уже существовать — это нормально
       console.error('Error creating user profile:', profileError)
     }
+    return { user: data.user, session: data.session, needsEmailConfirmation: false }
   }
 
-  return {
-    user,
-    session,
-    needsEmailConfirmation: false
-  }
+  // В обычном случае письма — сессии нет, требуется подтверждение email
+  return { user: data.user, session: data.session, needsEmailConfirmation: true }
 }
 
 // Вход пользователя
