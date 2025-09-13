@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'User created and logged in successfully',
       user: {
         id: result.user?.id,
@@ -33,6 +33,20 @@ export async function POST(request: NextRequest) {
         name: result.user?.user_metadata?.name,
       }
     })
+
+    // Set access token cookie for server-side API auth
+    const accessToken = result.session?.access_token
+    if (accessToken) {
+      response.cookies.set('sb-access-token', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      })
+    }
+
+    return response
   } catch (error: any) {
     console.error('Registration error:', error)
     

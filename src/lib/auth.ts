@@ -124,7 +124,12 @@ export async function getUserFromRequest(request: NextRequest) {
   }
 
   const authHeader = request.headers.get('authorization')
-  const token = authHeader?.replace('Bearer ', '')
+  let token = authHeader?.replace('Bearer ', '') || undefined
+
+  // Пытаемся прочитать токен из куки, если заголовка нет
+  if (!token) {
+    token = request.cookies.get('sb-access-token')?.value
+  }
 
   if (!token) return null
 

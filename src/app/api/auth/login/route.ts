@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       console.error('Error fetching user profile:', profileError)
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Login successful',
       user: {
         id: result.user.id,
@@ -41,6 +41,20 @@ export async function POST(request: NextRequest) {
         usageCountMonth: userProfile?.usage_count_month || 0,
       }
     })
+
+    // Set access token cookie for server-side API auth
+    const accessToken = result.session?.access_token
+    if (accessToken) {
+      response.cookies.set('sb-access-token', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      })
+    }
+
+    return response
   } catch (error: any) {
     console.error('Login error:', error)
     

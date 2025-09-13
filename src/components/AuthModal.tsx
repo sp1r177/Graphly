@@ -3,7 +3,6 @@
 import { Button, Input, Card } from '@/components/ui'
 import { X, Mail, Lock, User, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { useState } from 'react'
-import { signUp, signIn } from '@/lib/auth'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -28,21 +27,26 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
     setError('')
 
     try {
-      if (mode === 'register') {
-        const result = await signUp(formData.email, formData.password, formData.name)
-        
-        if (result.needsEmailConfirmation) {
-          setEmailSent(true)
-        } else {
-          // Автоматический вход после регистрации
-          onClose()
-          window.location.reload()
-        }
-      } else {
-        await signIn(formData.email, formData.password)
-        onClose()
-        window.location.reload()
+      const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login'
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Ошибка аутентификации')
       }
+
+      if (mode === 'register' && data?.needsEmailConfirmation) {
+        setEmailSent(true)
+        return
+      }
+
+      onClose()
+      window.location.reload()
     } catch (error: any) {
       console.error('Auth error:', error)
       let errorMessage = 'Произошла ошибка'

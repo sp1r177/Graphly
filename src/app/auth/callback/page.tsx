@@ -38,6 +38,17 @@ export default function AuthCallback() {
               console.error('Error creating user profile:', profileError)
             }
           }
+
+          // Устанавливаем httpOnly cookie с access_token через серверный эндпоинт
+          try {
+            await fetch('/api/auth/set-cookie', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ accessToken: data.session.access_token })
+            })
+          } catch (cookieError) {
+            console.error('Failed to set cookie:', cookieError)
+          }
           
           setStatus('success')
           setMessage('Email успешно подтвержден! Перенаправляем...')
