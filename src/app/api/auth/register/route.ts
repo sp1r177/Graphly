@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { hashPassword, generateToken, validateEmail, validatePassword } from '@/lib/auth'
+import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Generate email verification token
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex')
+    
     // Hash password and create user
     const hashedPassword = await hashPassword(password)
     
@@ -50,6 +54,8 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         name: name || null,
+        emailVerified: false,
+        emailVerificationToken,
         subscriptionStatus: 'FREE',
         usageCountDay: 0,
         usageCountMonth: 0,
@@ -58,29 +64,28 @@ export async function POST(request: NextRequest) {
         id: true,
         email: true,
         name: true,
+        emailVerified: true,
         subscriptionStatus: true,
         usageCountDay: true,
         usageCountMonth: true,
       }
     })
 
-    // Generate JWT token
-    const token = generateToken(user.id, user.email)
-
-    // Set HTTP-only cookie
-    const response = NextResponse.json({
-      message: 'User created successfully',
-      user
+    // Send verification email (simplified for now)
+    console.log(`📧 Email verification token for ${email}: ${emailVerificationToken}`)
+    
+    // For now, we'll return success without auto-login
+    // User needs to verify email first
+    return NextResponse.json({
+      message: 'Регистрация прошла успешно! Проверьте почту для подтверждения email.',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        emailVerified: user.emailVerified
+      },
+      verificationToken: emailVerificationToken // For testing
     })
-
-    response.cookies.set('auth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    })
-
-    return response
   } catch (error) {
     console.error('Registration error:', error)
     

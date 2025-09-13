@@ -19,6 +19,8 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [verificationToken, setVerificationToken] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,13 +40,16 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
       const data = await response.json()
 
       if (response.ok) {
-        // Handle successful auth
         if (mode === 'register') {
-          alert('Регистрация прошла успешно! Теперь вы можете войти в систему.')
+          // Show success message and verification token for testing
+          setSuccess(data.message)
+          setVerificationToken(data.verificationToken)
+          // Don't close modal yet, show verification step
+        } else {
+          // Handle successful login
+          onClose()
+          window.location.reload()
         }
-        onClose()
-        // Refresh page or update user state
-        window.location.reload()
       } else {
         setError(data.error || 'Ошибка аутентификации')
       }
@@ -61,6 +66,40 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
       ...prev,
       [e.target.name]: e.target.value
     }))
+  }
+
+  const handleVerifyEmail = async () => {
+    if (!verificationToken) return
+    
+    setIsSubmitting(true)
+    setError('')
+    
+    try {
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: verificationToken })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        setSuccess('Email успешно подтвержден! Вы авторизованы.')
+        setTimeout(() => {
+          onClose()
+          window.location.reload()
+        }, 2000)
+      } else {
+        setError(data.error || 'Ошибка подтверждения email')
+      }
+    } catch (error) {
+      console.error('Verification error:', error)
+      setError('Ошибка подключения. Попробуйте позже.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (!isOpen) return null
@@ -93,6 +132,13 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
             {error}
+          </div>
+        )}
+
+        {/* Success Message */}
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+            {success}
           </div>
         )}
 
@@ -164,22 +210,52 @@ export function AuthModal({ isOpen, onClose, mode }: AuthModalProps) {
             </div>
           </div>
 
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            variant="primary"
-            size="lg"
-            className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                {mode === 'login' ? 'Входим...' : 'Регистрируем...'}
-              </>
-            ) : (
-              mode === 'login' ? 'Войти' : 'Зарегистрироваться'
-            )}
-          </Button>
+          {mode === 'register' && verificationToken ? (
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-4">
+                  Для тестирования используйте этот токен подтверждения:
+                </p>
+                <div className="bg-gray-100 p-3 rounded-lg text-xs font-mono break-all">
+                  {verificationToken}
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={handleVerifyEmail}
+                disabled={isSubmitting}
+                variant="primary"
+                size="lg"
+                className="w-full h-12 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Подтверждаем...
+                  </>
+                ) : (
+                  'Подтвердить Email'
+                )}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              variant="primary"
+              size="lg"
+              className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  {mode === 'login' ? 'Входим...' : 'Регистрируем...'}
+                </>
+              ) : (
+                mode === 'login' ? 'Войти' : 'Зарегистрироваться'
+              )}
+            </Button>
+          )}
         </form>
 
         {/* Footer */}

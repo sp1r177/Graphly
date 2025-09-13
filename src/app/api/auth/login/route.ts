@@ -28,7 +28,15 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: 'Неверные учетные данные' },
+        { status: 401 }
+      )
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        { error: 'Email не подтвержден. Проверьте почту и подтвердите регистрацию.' },
         { status: 401 }
       )
     }
