@@ -19,6 +19,26 @@ export async function POST(request: NextRequest) {
     const result = await signUp(email, password, name, redirectTo)
 
     if (result.needsEmailConfirmation) {
+      // Отправляем красивое письмо через UniSender
+      try {
+        const emailResponse = await fetch(`${process.env.SITE_URL || 'http://localhost:3000'}/api/auth/send-confirmation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            confirmationUrl: redirectTo,
+            name
+          })
+        })
+        
+        if (!emailResponse.ok) {
+          const errorData = await emailResponse.json()
+          console.error('Email sending failed:', errorData)
+        }
+      } catch (emailError) {
+        console.error('Email sending error:', emailError)
+      }
+
       return NextResponse.json({
         message: 'Registration successful. Please check your email to confirm your account.',
         needsEmailConfirmation: true,
