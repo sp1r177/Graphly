@@ -1,103 +1,206 @@
-# Graphly - AI Content Generation Platform
+# AIКонтент - Платформа генерации маркетингового контента
 
-Modern platform for generating marketing content using Yandex GPT 5.1.
+Современная платформа для SMM-щиков, фрилансеров и малого бизнеса в России, которая позволяет быстро создавать профессиональные посты для ВК, Telegram, email-кампании и статьи с помощью искусственного интеллекта.
 
-## 🚀 Features
+## 🚀 Основные возможности
 
-- **Content Generation**: Create posts for VK, Telegram, email campaigns and articles
-- **Templates**: Ready-made templates for different content types
-- **Multi-language**: Russian and English support
-- **Mobile Responsive**: Optimized for all devices
-- **User Management**: Registration, authentication, and subscription management
+- **Генерация контента**: Создание постов для социальных сетей, email-рассылок и статей
+- **Шаблоны**: Готовые шаблоны для разных типов контента
+- **Многоязычность**: Поддержка русского и английского языков
+- **Мобильная адаптивность**: Оптимизировано для всех устройств
+- **Интеграция с платежами**: Готовность к интеграции с Яндекс.Касса
 
-## 🛠 Technology Stack
+## 🎯 Целевая аудитория
+
+- SMM-щики и маркетологи
+- Фрилансеры в сфере контент-маркетинга
+- Малый и средний бизнес
+- Агентства и команды
+
+## 💰 Тарифные планы
+
+- **Бесплатный**: 1 генерация в день
+- **Старт**: 1000 ₽/мес (100 генераций)
+- **Бизнес**: 3000 ₽/мес (500 генераций)
+
+## 🛠 Технологии
 
 - **Frontend**: Next.js 14, React, TypeScript
-- **Styling**: Tailwind CSS
-- **Icons**: Lucide React
-- **Database**: Prisma + PostgreSQL
-- **AI**: Yandex GPT 5.1 (Yandex Cloud API)
-- **Deployment**: Vercel
+- **Стили**: Tailwind CSS
+- **Иконки**: Lucide React
+- **База данных**: Prisma + PostgreSQL
+- **Платежи**: Яндекс.Касса (готовность к интеграции)
+- **Деплой**: Vercel
 
-## 🌐 Deployment on Vercel
+## 🚀 Развертывание на Vercel
 
-### 1. Environment Variables
+### 1. Подготовка проекта
 
-Add these variables in Vercel Dashboard → Settings → Environment Variables:
+Убедитесь, что у вас установлены:
+- Node.js 18+ 
+- npm или yarn
+- Git
 
-```env
-DATABASE_URL="postgresql://user:password@host:5432/database"
-JWT_SECRET="your-super-secret-jwt-key-for-production"
-YANDEX_API_KEY="your-yandex-cloud-api-key"
-YANDEX_FOLDER_ID="your-yandex-cloud-folder-id"
-NEXT_PUBLIC_BASE_URL="https://your-domain.vercel.app"
-NODE_ENV="production"
-```
-
-### 2. Database Setup
-
-For production, you need PostgreSQL:
-- Use Vercel Postgres, Supabase, or Railway
-- Apply schema: `npx prisma migrate deploy`
-
-### 3. Yandex Cloud API Setup
-
-1. Create project in [Yandex Cloud Console](https://console.cloud.yandex.ru/)
-2. Create service account with `ai.languageModels.user` role
-3. Generate API key and get Folder ID
-4. Add to Vercel environment variables
-
-### 4. Deploy
+### 2. Клонирование и установка зависимостей
 
 ```bash
-git add .
-git commit -m "Deploy to Vercel"
-git push origin main
+git clone <your-repo-url>
+cd Graphly
+npm install
 ```
 
-Connect repository to Vercel and deploy.
+### 3. Настройка переменных окружения
 
-## 📊 API Endpoints
+Создайте файл `.env.local` в корне проекта:
 
-- `GET /api/generate` - Check API status
-- `POST /api/generate` - Generate content
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `GET /api/auth/me` - Get user profile
+```env
+# База данных
+DATABASE_URL="your_postgresql_connection_string"
 
-## 🎯 Content Types
+# Яндекс.Касса (для продакшена)
+YANDEX_KASSA_SHOP_ID="your_shop_id"
+YANDEX_KASSA_SECRET_KEY="your_secret_key"
+YANDEX_KASSA_BASE_URL="https://payment.yandex.net/api/v3"
 
-- **VK_POST** - VKontakte posts
-- **TELEGRAM_POST** - Telegram posts  
-- **EMAIL_CAMPAIGN** - Email campaigns
-- **BLOG_ARTICLE** - Blog articles
-- **VIDEO_SCRIPT** - Video scripts
-- **IMAGE_GENERATION** - Image descriptions
+# Базовый URL
+NEXT_PUBLIC_BASE_URL="https://your-domain.vercel.app"
+```
 
-## 🔒 Authentication
+### 4. Настройка базы данных
 
-- JWT-based authentication
-- HTTP-only cookies for security
-- User roles and subscription management
+```bash
+# Создание миграций
+npx prisma migrate dev
 
-## 📱 Subscription Plans
+# Генерация Prisma Client
+npx prisma generate
+```
 
-- **Free**: Limited daily generations
-- **Pro**: Increased limits
-- **Ultra**: Unlimited generations
+### 5. Деплой на Vercel
 
-## 🚀 Getting Started
+#### Способ 1: Через Vercel CLI
 
-1. Clone repository
-2. Set up environment variables in Vercel
-3. Deploy to Vercel
-4. Configure database and API keys
-5. Test functionality
+```bash
+# Установка Vercel CLI
+npm i -g vercel
 
-## 📞 Support
+# Логин в Vercel
+vercel login
 
-For issues and questions, check the deployment logs in Vercel Dashboard → Functions.
+# Деплой
+vercel --prod
+```
 
-## 📄 License
+#### Способ 2: Через GitHub
 
-This project is private and proprietary.
+1. Загрузите код в GitHub репозиторий
+2. Перейдите на [vercel.com](https://vercel.com)
+3. Нажмите "New Project"
+4. Подключите ваш GitHub репозиторий
+5. Настройте переменные окружения в Vercel Dashboard
+6. Нажмите "Deploy"
+
+### 6. Настройка переменных окружения в Vercel
+
+В Vercel Dashboard перейдите в настройки проекта → Environment Variables и добавьте:
+
+- `DATABASE_URL`
+- `YANDEX_KASSA_SHOP_ID`
+- `YANDEX_KASSA_SECRET_KEY`
+- `YANDEX_KASSA_BASE_URL`
+- `NEXT_PUBLIC_BASE_URL`
+
+### 7. Настройка базы данных
+
+Для продакшена рекомендуется использовать:
+- **Vercel Postgres** (интегрирован с Vercel)
+- **Supabase** (бесплатный план)
+- **PlanetScale** (бесплатный план)
+
+### 8. Финальная настройка
+
+После деплоя:
+1. Выполните миграции базы данных
+2. Проверьте работу всех функций
+3. Настройте домен (если нужно)
+
+## 🔧 Локальная разработка
+
+```bash
+# Установка зависимостей
+npm install
+
+# Запуск в режиме разработки
+npm run dev
+
+# Сборка для продакшена
+npm run build
+
+# Запуск собранного приложения
+npm start
+```
+
+## 📱 Функциональность
+
+### Главная страница
+- Генератор контента с выбором шаблонов
+- Примеры созданного контента
+- Форма обратной связи
+- Переключатель языков
+
+### Аутентификация
+- Регистрация и вход
+- Модальные окна
+- Поддержка Google OAuth (готовность)
+
+### Генерация контента
+- API endpoint для интеграции с Hugging Face
+- Шаблоны для разных платформ
+- Индикатор загрузки
+- Возможность копирования и экспорта
+
+### Платежи
+- Интеграция с Яндекс.Касса
+- Управление подписками
+- История платежей
+
+## 🔒 Безопасность
+
+- JWT токены для аутентификации
+- Валидация входных данных
+- Защита от CSRF атак
+- Безопасные платежи через Яндекс.Касса
+
+## 📊 Мониторинг и аналитика
+
+- Логирование ошибок
+- Отслеживание использования
+- Аналитика генераций
+- Мониторинг производительности
+
+## 🚀 Планы развития
+
+- [ ] Интеграция с реальным Hugging Face API
+- [ ] Добавление новых шаблонов контента
+- [ ] Система рекомендаций
+- [ ] Командная работа
+- [ ] API для внешних интеграций
+- [ ] Мобильное приложение
+
+## 📞 Поддержка
+
+- Email: support@aikontent.ru
+- Telegram: @aikontent_support
+- Документация: [docs.aikontent.ru](https://docs.aikontent.ru)
+
+## 📄 Лицензия
+
+MIT License - см. файл [LICENSE](LICENSE) для деталей.
+
+## 🤝 Вклад в проект
+
+Мы приветствуем вклад в развитие проекта! Пожалуйста, ознакомьтесь с [CONTRIBUTING.md](CONTRIBUTING.md) для получения дополнительной информации.
+
+---
+
+**AIКонтент** - Создавайте контент как профессионал! 🚀

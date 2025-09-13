@@ -83,21 +83,7 @@ export default function DashboardPage() {
       // In a real app, you'd also refresh user data here
     } catch (error) {
       console.error('Generation failed:', error)
-      
-      // Show more specific error messages
-      let errorMessage = 'Произошла ошибка при генерации. Попробуйте еще раз.'
-      
-      if (error instanceof Error) {
-        if (error.message.includes('API')) {
-          errorMessage = 'Ошибка API: ' + error.message
-        } else if (error.message.includes('лимит') || error.message.includes('limit')) {
-          errorMessage = error.message
-        } else if (error.message.includes('Unauthorized')) {
-          errorMessage = 'Необходима авторизация для генерации контента.'
-        }
-      }
-      
-      alert(errorMessage)
+      alert('Произошла ошибка при генерации. Попробуйте еще раз.')
     } finally {
       setIsLoading(false)
     }
