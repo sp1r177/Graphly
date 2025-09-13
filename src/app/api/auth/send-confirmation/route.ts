@@ -8,11 +8,35 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, confirmationUrl, name } = await request.json()
+    const { email, name } = await request.json()
 
     if (!UNISENDER_API_KEY) {
       return NextResponse.json({ error: 'UNISENDER_API_KEY not set' }, { status: 500 })
     }
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
+    }
+
+    // Генерируем action_link (официальный линк подтверждения) через Admin API
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const siteUrl = process.env.SITE_URL || 'http://localhost:3000'
+    const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback`
+
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: 'signup',
+      email,
+      options: {
+        redirectTo,
+      },
+    })
+
+    if (linkError || !linkData?.action_link) {
+      console.error('generateLink error:', linkError)
+      return NextResponse.json({ error: 'Failed to generate confirmation link' }, { status: 500 })
+    }
+
+    const confirmationUrl = linkData.action_link
 
     // HTML шаблон письма
     const htmlTemplate = `
@@ -53,30 +77,6 @@ export async function POST(request: NextRequest) {
       </body>
       </html>
     `
-
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
-    }
-
-    // Генерируем action_link (официальный линк подтверждения) через Admin API
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    const siteUrl = process.env.SITE_URL || 'http://localhost:3000'
-    const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback`
-
-    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: 'signup',
-      email,
-      options: {
-        redirectTo,
-      },
-    })
-
-    if (linkError || !linkData?.action_link) {
-      console.error('generateLink error:', linkError)
-      return NextResponse.json({ error: 'Failed to generate confirmation link' }, { status: 500 })
-    }
-
-    const confirmationUrl = linkData.action_link
 
     // Формируем готовый HTML с правильной ссылкой
     const htmlWithUrl = htmlTemplate.replace(/\$\{confirmationUrl\}/g, confirmationUrl)

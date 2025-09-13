@@ -55,18 +55,20 @@ export async function POST(request: NextRequest) {
 
     const htmlTemplate = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Подтверждение регистрации</title></head><body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0"><div style="max-width:600px;margin:0 auto;background:#fff"><div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:28px 30px;text-align:center"><h1 style="margin:0;font-size:22px">🎉 Добро пожаловать в Graphly!</h1></div><div style="padding:28px 30px"><p style="margin:0 0 12px 0">Привет${name ? `, ${name}` : ''}!</p><p style="margin:0 0 12px 0">Для завершения регистрации подтвердите ваш email:</p><div style="text-align:center;margin:22px 0"><a href="${actionLink}" style="display:inline-block;background:#667eea;color:#fff;padding:14px 22px;border-radius:6px;text-decoration:none">✅ Подтвердить email</a></div><p style="margin:0 0 8px 0">Если кнопка не работает, скопируйте ссылку ниже:</p><p style="word-break:break-all;background:#f5f5f5;padding:10px;border-radius:6px">${actionLink}</p><p style="margin-top:18px;color:#666;font-size:14px">С уважением, команда Graphly</p></div></div></body></html>`
 
-    const uniResp = await fetch('https://api.unisender.com/ru/api/sendEmail', {
+    // Отправляем письмо через UniSender API с action_link
+    const params = new URLSearchParams()
+    params.set('api_key', UNISENDER_API_KEY)
+    params.set('email', email)
+    params.set('sender_name', 'Graphly')
+    params.set('sender_email', UNISENDER_SENDER_EMAIL)
+    params.set('subject', 'Подтверждение регистрации в Graphly')
+    params.set('body', htmlTemplate)
+    params.set('body_type', 'html')
+
+    const uniResp = await fetch('https://api.unisender.com/ru/api/sendEmail?format=json', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: UNISENDER_API_KEY,
-        email,
-        sender_name: 'Graphly',
-        sender_email: UNISENDER_SENDER_EMAIL,
-        subject: 'Подтверждение регистрации в Graphly',
-        body: htmlTemplate,
-        list_id: 1,
-      }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
     })
 
     const uniJson = await uniResp.json().catch(() => ({}))
@@ -80,29 +82,6 @@ export async function POST(request: NextRequest) {
       needsEmailConfirmation: true,
       user: { email },
     })
-
-    const response = NextResponse.json({
-      message: 'User created and logged in successfully',
-      user: {
-        id: result.user?.id,
-        email: result.user?.email,
-        name: result.user?.user_metadata?.name,
-      }
-    })
-
-    // Set access token cookie for server-side API auth
-    const accessToken = result.session?.access_token
-    if (accessToken) {
-      response.cookies.set('sb-access-token', accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      })
-    }
-
-    return response
   } catch (error: any) {
     console.error('Registration error:', error)
     
