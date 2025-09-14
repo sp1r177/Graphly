@@ -3,6 +3,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT NOT NULL,
   name TEXT,
+  avatar_url TEXT,
+  vk_id TEXT UNIQUE,
+  provider TEXT DEFAULT 'email',
   subscription_status TEXT DEFAULT 'FREE' CHECK (subscription_status IN ('FREE', 'PRO', 'ULTRA')),
   usage_count_day INTEGER DEFAULT 0,
   usage_count_month INTEGER DEFAULT 0,
@@ -81,11 +84,14 @@ CREATE TRIGGER update_user_profiles_updated_at
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.user_profiles (id, email, name)
+  INSERT INTO public.user_profiles (id, email, name, avatar_url, vk_id, provider)
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'name', '')
+    COALESCE(NEW.raw_user_meta_data->>'name', ''),
+    NEW.raw_user_meta_data->>'avatar_url',
+    NEW.raw_user_meta_data->>'vk_id',
+    COALESCE(NEW.raw_user_meta_data->>'provider', 'email')
   );
   RETURN NEW;
 END;

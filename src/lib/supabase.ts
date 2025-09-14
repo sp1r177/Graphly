@@ -41,6 +41,9 @@ export interface UserProfile {
   id: string
   email: string
   name?: string
+  avatar_url?: string
+  vk_id?: string
+  provider?: string
   subscription_status: 'FREE' | 'PRO' | 'ULTRA'
   usage_count_day: number
   usage_count_month: number
@@ -50,7 +53,14 @@ export interface UserProfile {
 }
 
 // Функции для работы с профилем пользователя
-export const createUserProfile = async (userId: string, email: string, name?: string) => {
+export const createUserProfile = async (
+  userId: string, 
+  email: string, 
+  name?: string, 
+  avatarUrl?: string, 
+  vkId?: string, 
+  provider: string = 'email'
+) => {
   if (!supabase) {
     console.warn('Supabase не настроен, пропускаем создание профиля')
     return null
@@ -62,6 +72,9 @@ export const createUserProfile = async (userId: string, email: string, name?: st
       id: userId,
       email,
       name,
+      avatar_url: avatarUrl,
+      vk_id: vkId,
+      provider,
       subscription_status: 'FREE',
       usage_count_day: 0,
       usage_count_month: 0,
