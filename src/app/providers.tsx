@@ -132,13 +132,23 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me')
+        console.log('Checking auth...')
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include', // Включаем отправку куки
+        })
+        console.log('Auth response status:', response.status)
+        
         if (response.ok) {
           const userData = await response.json()
+          console.log('User data received:', userData)
           setUser(userData)
+        } else {
+          console.log('Auth failed, clearing user')
+          setUser(null)
         }
       } catch (error) {
         console.error('Auth check failed:', error)
+        setUser(null)
       } finally {
         setIsLoading(false)
       }
