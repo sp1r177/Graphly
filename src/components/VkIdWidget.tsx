@@ -95,11 +95,13 @@ export function VkIdWidget({ onSuccess, className }: VkIdWidgetProps) {
       // Устанавливаем пользователя в контекст
       setUser(result.user)
       
-      // Небольшая задержка для обновления состояния
-      setTimeout(() => {
+      // Вызываем callback если есть
+      if (onSuccess) {
+        onSuccess()
+      } else {
         // Обновляем страницу для корректной работы авторизации
         window.location.href = '/dashboard'
-      }, 100)
+      }
 
     } catch (error) {
       console.error('VK ID auth error:', error)

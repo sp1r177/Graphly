@@ -11,9 +11,6 @@ export function Header() {
   const { user, setUser } = useUser()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  // Отладочная информация
-  console.log('Header render - user:', user)
-
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })

@@ -10,9 +10,6 @@ import { AuthModal } from './AuthModal'
 export function LandingHero() {
   const { t, language, setLanguage } = useLanguage()
   const { user } = useUser()
-  
-  // Отладочная информация
-  console.log('LandingHero render - user:', user)
   const [prompt, setPrompt] = useState('')
   const [templateType, setTemplateType] = useState('VK_POST')
   const [isLoading, setIsLoading] = useState(false)
