@@ -42,7 +42,7 @@ export function VkIdWidget({ onSuccess, className }: VkIdWidgetProps) {
 
         oneTap.render({
           container: containerRef.current,
-          showAlternativeLogin: true
+          showAlternativeLogin: false
         })
         .on(VKID.WidgetEvents.ERROR, vkidOnError)
         .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function (payload: any) {
@@ -95,13 +95,8 @@ export function VkIdWidget({ onSuccess, className }: VkIdWidgetProps) {
       // Устанавливаем пользователя в контекст
       setUser(result.user)
       
-      // Вызываем callback если есть
-      if (onSuccess) {
-        onSuccess()
-      } else {
-        // Перенаправляем в личный кабинет
-        router.push('/dashboard')
-      }
+      // Обновляем страницу для корректной работы авторизации
+      window.location.href = '/dashboard'
 
     } catch (error) {
       console.error('VK ID auth error:', error)

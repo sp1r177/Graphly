@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       console.error('Error fetching user profile:', profileError)
     }
 
-    // Создаем сессию для пользователя
+    // Создаем сессию для пользователя через admin API
     const { data: sessionData, error: sessionError } = await admin.auth.admin.generateLink({
       type: 'magiclink',
       email: supabaseUser.email!,
@@ -104,6 +104,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Создаем JWT токен для сессии
+    const sessionToken = sessionData.properties.hashed_token
 
     const response = NextResponse.json({
       message: 'VK ID authentication successful',
@@ -119,13 +122,24 @@ export async function POST(request: NextRequest) {
     })
 
     // Устанавливаем куку с токеном доступа
-    response.cookies.set('sb-access-token', sessionData.properties.hashed_token, {
+    response.cookies.set('sb-access-token', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
     })
+
+    // Также устанавливаем куку с refresh токеном если есть
+    if (sessionData.properties?.refresh_token) {
+      response.cookies.set('sb-refresh-token', sessionData.properties.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      })
+    }
 
     return response
 

@@ -1,16 +1,22 @@
 import { NextResponse } from 'next/server'
-import { signOut } from '@/lib/auth'
 
 export async function POST() {
   try {
-    await signOut()
-
     const response = NextResponse.json({
       message: 'Logout successful'
     })
 
     // Clear access token cookie
     response.cookies.set('sb-access-token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    })
+
+    // Clear refresh token cookie if exists
+    response.cookies.set('sb-refresh-token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

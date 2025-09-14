@@ -120,12 +120,26 @@ export async function getUserFromRequest(request: NextRequest) {
     token = request.cookies.get('sb-access-token')?.value
   }
 
-  if (!token) return null
+  if (!token) {
+    console.log('No token found in request')
+    return null
+  }
 
-  const { data: { user }, error } = await supabase.auth.getUser(token)
-  if (error || !user) return null
-
-  return user
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token)
+    if (error) {
+      console.error('Error getting user from token:', error)
+      return null
+    }
+    if (!user) {
+      console.log('No user found for token')
+      return null
+    }
+    return user
+  } catch (error) {
+    console.error('Exception getting user from token:', error)
+    return null
+  }
 }
 
 export function validateEmail(email: string): boolean {
