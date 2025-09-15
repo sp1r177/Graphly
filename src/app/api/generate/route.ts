@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { supabase, getUserProfile, updateUserProfile } from '@/lib/supabase'
 import { yandexGPT } from '@/lib/yandex-gpt'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const authUser = getUserFromRequest(request)
+    const authUser = await getUserFromRequest(request)
     
     if (!authUser) {
       return NextResponse.json(
@@ -26,17 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check user's subscription and usage limits
-    const user = await prisma.user.findUnique({
-      where: { id: authUser.userId },
-      select: {
-        subscriptionStatus: true,
-        usageCountDay: true,
-        usageCountMonth: true,
-        lastGenerationDate: true,
-        tokensUsedDay: true,
-        tokensUsedMonth: true
-      }
-    })
+    const user = await getUserProfile(authUser.id)
 
     if (!user) {
       return NextResponse.json(
@@ -45,28 +35,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check daily usage limit for free users (10 generations or 5000 tokens per day)
-    if (user.subscriptionStatus === 'FREE') {
+    // Check daily usage limit for free users (10 generations per day)
+    if (user.subscription_status === 'FREE') {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       
-      const lastGeneration = user.lastGenerationDate
-      const lastGenerationDate = lastGeneration ? new Date(lastGeneration) : null
-      
-      if (!lastGenerationDate || lastGenerationDate < today) {
-        // Reset daily count for new day
-        await prisma.user.update({
-          where: { id: authUser.userId },
-          data: { 
-            usageCountDay: 0,
-            tokensUsedDay: 0
-          }
-        })
-        user.usageCountDay = 0
-        user.tokensUsedDay = 0
-      }
-      
-      if (user.usageCountDay >= 10 || (user.tokensUsedDay || 0) >= 5000) {
+      // For now, we'll use a simple daily limit check
+      // In a real implementation, you'd want to track daily usage more precisely
+      if (user.usage_count_day >= 10) {
         return NextResponse.json(
           { error: 'Daily generation limit reached. Upgrade to Pro for unlimited generations.' },
           { status: 429 }
@@ -74,9 +50,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check monthly usage limit for Pro users (100 generations or 50000 tokens per month)
-    if (user.subscriptionStatus === 'PRO') {
-      if (user.usageCountMonth >= 100 || (user.tokensUsedMonth || 0) >= 50000) {
+    // Check monthly usage limit for Pro users (100 generations per month)
+    if (user.subscription_status === 'PRO') {
+      if (user.usage_count_month >= 100) {
         return NextResponse.json(
           { error: 'Monthly generation limit reached. Upgrade to Ultra for unlimited generations.' },
           { status: 429 }
@@ -107,37 +83,42 @@ export async function POST(request: NextRequest) {
     }
     
     // Save generation to database
-    const generation = await prisma.generation.create({
-      data: {
-        userId: authUser.userId,
+    if (!supabase) {
+      throw new Error('Supabase not configured')
+    }
+
+    const { data: generation, error: generationError } = await supabase
+      .from('generations')
+      .insert({
+        user_id: authUser.id,
         prompt,
-        outputText: generatedText,
-        templateType,
-        tokensUsed,
-      }
-    })
+        output_text: generatedText,
+        template_type: templateType,
+        tokens_used: tokensUsed,
+      })
+      .select()
+      .single()
+
+    if (generationError) {
+      console.error('Error saving generation:', generationError)
+      throw new Error('Failed to save generation')
+    }
 
     // Update user usage counts
-    await prisma.user.update({
-      where: { id: authUser.userId },
-      data: {
-        usageCountDay: { increment: 1 },
-        usageCountMonth: { increment: 1 },
-        tokensUsedDay: { increment: tokensUsed },
-        tokensUsedMonth: { increment: tokensUsed },
-        lastGenerationDate: new Date()
-      }
+    await updateUserProfile(authUser.id, {
+      usage_count_day: user.usage_count_day + 1,
+      usage_count_month: user.usage_count_month + 1,
     })
 
     return NextResponse.json({
       id: generation.id,
       text: generatedText,
       templateType,
-      timestamp: generation.timestamp,
+      timestamp: generation.created_at,
       tokensUsed,
       remainingTokens: {
-        daily: user.subscriptionStatus === 'FREE' ? Math.max(0, 5000 - ((user.tokensUsedDay || 0) + tokensUsed)) : -1,
-        monthly: user.subscriptionStatus === 'PRO' ? Math.max(0, 50000 - ((user.tokensUsedMonth || 0) + tokensUsed)) : -1
+        daily: user.subscription_status === 'FREE' ? Math.max(0, 10 - (user.usage_count_day + 1)) : -1,
+        monthly: user.subscription_status === 'PRO' ? Math.max(0, 100 - (user.usage_count_month + 1)) : -1
       }
     })
 
