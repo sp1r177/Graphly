@@ -15,10 +15,15 @@ export function Header() {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
       setUser(null)
+      // Очищаем localStorage
+      localStorage.removeItem('user')
       // Перенаправляем на главную страницу после выхода
       window.location.href = '/'
     } catch (error) {
       console.error('Logout failed:', error)
+      // Очищаем localStorage даже при ошибке
+      localStorage.removeItem('user')
+      setUser(null)
     }
   }
 

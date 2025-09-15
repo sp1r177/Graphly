@@ -133,6 +133,38 @@ export function Providers({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         console.log('Checking auth in provider...')
+        
+        // Сначала проверяем localStorage
+        const savedUser = localStorage.getItem('user')
+        if (savedUser) {
+          try {
+            const userData = JSON.parse(savedUser)
+            console.log('User found in localStorage:', userData)
+            setUser(userData)
+            setIsLoading(false)
+            
+            // Проверяем API в фоне
+            const response = await fetch('/api/auth/me', {
+              credentials: 'include',
+            })
+            
+            if (response.ok) {
+              const apiUserData = await response.json()
+              console.log('API confirmed user:', apiUserData)
+              setUser(apiUserData)
+              localStorage.setItem('user', JSON.stringify(apiUserData))
+            } else {
+              console.log('API auth failed, keeping localStorage user')
+            }
+            
+            return
+          } catch (e) {
+            console.log('Invalid user data in localStorage, clearing')
+            localStorage.removeItem('user')
+          }
+        }
+        
+        // Если нет в localStorage, проверяем API
         const response = await fetch('/api/auth/me', {
           credentials: 'include',
         })
@@ -143,13 +175,16 @@ export function Providers({ children }: { children: ReactNode }) {
           const userData = await response.json()
           console.log('User data from API:', userData)
           setUser(userData)
+          localStorage.setItem('user', JSON.stringify(userData))
         } else {
           console.log('Auth failed, setting user to null')
           setUser(null)
+          localStorage.removeItem('user')
         }
       } catch (error) {
         console.error('Auth check failed:', error)
         setUser(null)
+        localStorage.removeItem('user')
       } finally {
         setIsLoading(false)
       }

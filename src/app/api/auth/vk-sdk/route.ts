@@ -142,8 +142,8 @@ export async function POST(request: NextRequest) {
     if (sessionToken) {
       console.log('Setting cookie with token:', sessionToken.substring(0, 20) + '...')
       response.cookies.set('sb-access-token', sessionToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        httpOnly: false, // Изменено на false для отладки
+        secure: false,   // Изменено на false для отладки
         sameSite: 'lax',
         path: '/',
         maxAge: 60 * 60 * 24 * 7, // 7 days

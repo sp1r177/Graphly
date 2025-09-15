@@ -95,6 +95,9 @@ export function VkIdWidget({ onSuccess, className }: VkIdWidgetProps) {
       // Устанавливаем пользователя в контекст
       setUser(result.user)
       
+      // Сохраняем пользователя в localStorage как backup
+      localStorage.setItem('user', JSON.stringify(result.user))
+      
       // Вызываем callback если есть
       if (onSuccess) {
         onSuccess()

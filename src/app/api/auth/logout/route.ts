@@ -8,8 +8,8 @@ export async function POST() {
 
     // Clear access token cookie
     response.cookies.set('sb-access-token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      httpOnly: false, // Изменено на false для отладки
+      secure: false,   // Изменено на false для отладки
       sameSite: 'lax',
       path: '/',
       maxAge: 0,
@@ -17,8 +17,8 @@ export async function POST() {
 
     // Clear refresh token cookie if exists
     response.cookies.set('sb-refresh-token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      httpOnly: false, // Изменено на false для отладки
+      secure: false,   // Изменено на false для отладки
       sameSite: 'lax',
       path: '/',
       maxAge: 0,
