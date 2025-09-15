@@ -20,23 +20,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Требуем авторизацию
-    const authUser = await getUserFromRequest(request)
-    console.log('AuthUser result:', authUser ? { id: authUser.id, email: authUser.email } : 'NULL')
+    // Простая проверка авторизации через graphly-user-id куку
+    const userId = request.cookies.get('graphly-user-id')?.value
+    console.log('User ID from cookie:', userId)
     
-    if (!authUser) {
-      console.log('=== GENERATE API: NO AUTH USER ===')
+    if (!userId) {
+      console.log('=== GENERATE API: NO USER ID IN COOKIE ===')
       return NextResponse.json(
         { error: 'Unauthorized', code: 'NOT_AUTHENTICATED' },
         { status: 401 }
       )
     }
 
-    const user = await getUserProfile(authUser.id)
+    // Получаем профиль пользователя
+    const user = await getUserProfile(userId)
     console.log('User profile:', user ? { id: user.id, subscription: user.subscription_status, usage: user.usage_count_day } : 'NULL')
     
     if (!user) {
-      console.log('=== GENERATE API: NO USER PROFILE ===')
+      console.log('=== GENERATE API: NO USER PROFILE FOR ID:', userId, '===')
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 

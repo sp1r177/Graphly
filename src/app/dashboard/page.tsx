@@ -53,8 +53,12 @@ export default function DashboardPage() {
       alert('Загрузка профиля... Попробуйте через секунду.')
       return
     }
-    if (!user) {
-      alert('Авторизуйтесь, чтобы генерировать контент')
+    
+    // Проверяем наличие куки graphly-user-id (главный индикатор авторизации)
+    const hasAuthCookie = document.cookie.includes('graphly-user-id=')
+    
+    if (!user || !hasAuthCookie) {
+      alert('Авторизуйтесь через VK ID, чтобы генерировать контент')
       window.location.href = '/auth/login'
       return
     }
