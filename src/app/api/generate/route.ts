@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { yandexGPT } from '@/lib/yandex-gpt'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,7 +32,9 @@ export async function POST(request: NextRequest) {
         subscriptionStatus: true,
         usageCountDay: true,
         usageCountMonth: true,
-        lastGenerationDate: true
+        lastGenerationDate: true,
+        tokensUsedDay: true,
+        tokensUsedMonth: true
       }
     })
 
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check daily usage limit for free users
+    // Check daily usage limit for free users (10 generations or 5000 tokens per day)
     if (user.subscriptionStatus === 'FREE') {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
@@ -54,12 +57,16 @@ export async function POST(request: NextRequest) {
         // Reset daily count for new day
         await prisma.user.update({
           where: { id: authUser.userId },
-          data: { usageCountDay: 0 }
+          data: { 
+            usageCountDay: 0,
+            tokensUsedDay: 0
+          }
         })
         user.usageCountDay = 0
+        user.tokensUsedDay = 0
       }
       
-      if (user.usageCountDay >= 10) {
+      if (user.usageCountDay >= 10 || (user.tokensUsedDay || 0) >= 5000) {
         return NextResponse.json(
           { error: 'Daily generation limit reached. Upgrade to Pro for unlimited generations.' },
           { status: 429 }
@@ -67,9 +74,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check monthly usage limit for Pro users
+    // Check monthly usage limit for Pro users (100 generations or 50000 tokens per month)
     if (user.subscriptionStatus === 'PRO') {
-      if (user.usageCountMonth >= 100) {
+      if (user.usageCountMonth >= 100 || (user.tokensUsedMonth || 0) >= 50000) {
         return NextResponse.json(
           { error: 'Monthly generation limit reached. Upgrade to Ultra for unlimited generations.' },
           { status: 429 }
@@ -77,8 +84,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Simulate AI generation (replace with actual AI service)
-    const generatedText = await generateContent(prompt, templateType)
+    // Generate content using Yandex GPT
+    let generatedText: string
+    let tokensUsed: number = 0
+
+    try {
+      const result = await yandexGPT.generateContent(prompt, templateType)
+      generatedText = result.text
+      tokensUsed = result.tokensUsed
+    } catch (error) {
+      console.error('Yandex GPT generation failed:', error)
+      // Fallback to mock generation if Yandex GPT fails
+      generatedText = await generateContent(prompt, templateType)
+      tokensUsed = 100 // Default token count for fallback
+    }
     
     // Save generation to database
     const generation = await prisma.generation.create({
@@ -87,6 +106,7 @@ export async function POST(request: NextRequest) {
         prompt,
         outputText: generatedText,
         templateType,
+        tokensUsed,
       }
     })
 
@@ -96,6 +116,8 @@ export async function POST(request: NextRequest) {
       data: {
         usageCountDay: { increment: 1 },
         usageCountMonth: { increment: 1 },
+        tokensUsedDay: { increment: tokensUsed },
+        tokensUsedMonth: { increment: tokensUsed },
         lastGenerationDate: new Date()
       }
     })
@@ -104,7 +126,12 @@ export async function POST(request: NextRequest) {
       id: generation.id,
       text: generatedText,
       templateType,
-      timestamp: generation.timestamp
+      timestamp: generation.timestamp,
+      tokensUsed,
+      remainingTokens: {
+        daily: user.subscriptionStatus === 'FREE' ? Math.max(0, 5000 - ((user.tokensUsedDay || 0) + tokensUsed)) : -1,
+        monthly: user.subscriptionStatus === 'PRO' ? Math.max(0, 50000 - ((user.tokensUsedMonth || 0) + tokensUsed)) : -1
+      }
     })
 
   } catch (error) {

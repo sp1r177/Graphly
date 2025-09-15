@@ -18,6 +18,8 @@ model User {
   subscriptionStatus String  @default("FREE") // FREE, PRO, ULTRA
   usageCountDay    Int      @default(0)
   usageCountMonth  Int      @default(0)
+  tokensUsedDay    Int      @default(0)
+  tokensUsedMonth  Int      @default(0)
   lastGenerationDate DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -35,6 +37,7 @@ model Generation {
   outputText      String?
   outputImageUrl  String?
   templateType    String   // VK_POST, TELEGRAM_POST, EMAIL_CAMPAIGN, BLOG_ARTICLE, VIDEO_SCRIPT, IMAGE_GENERATION
+  tokensUsed      Int      @default(0)
   timestamp       DateTime @default(now())
   
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
