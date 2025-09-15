@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { supabase, getUserProfile, updateUserProfile } from '@/lib/supabase'
 import { yandexGPT } from '@/lib/yandex-gpt'
+import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,25 +34,58 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Получаем профиль пользователя
-    const user = await getUserProfile(userId)
-    console.log('User profile:', user ? { id: user.id, subscription: user.subscription_status, usage: user.usage_count_day } : 'NULL')
+    // Создаем admin-клиент для работы с профилем и генерациями (обходит RLS)
+    const supabaseUrl = process.env.SUPABASE_URL as string
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
+    const admin = (supabaseUrl && serviceKey) ? createClient(supabaseUrl, serviceKey) : null
+    if (!admin) {
+      console.error('Supabase admin client is not configured')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
+    // Получаем или создаем профиль пользователя
+    let { data: user, error: userSelectError } = await admin
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (userSelectError && userSelectError.code !== 'PGRST116') {
+      console.error('Error selecting user profile (admin):', userSelectError)
+    }
 
     if (!user) {
-      console.log('=== GENERATE API: NO USER PROFILE FOR ID:', userId, '===')
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      const upsertPayload = {
+        id: userId,
+        email: `${userId}@vk.id`,
+        subscription_status: 'FREE',
+        usage_count_day: 0,
+        usage_count_month: 0,
+      }
+      const { data: created, error: createErr } = await admin
+        .from('user_profiles')
+        .upsert(upsertPayload)
+        .select('*')
+        .single()
+      if (createErr) {
+        console.error('Error creating user profile (admin):', createErr)
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      user = created as any
     }
+
+    console.log('User profile:', user ? { id: user.id, subscription: user.subscription_status, usage: user.usage_count_day } : 'NULL')
 
     // Триал: всего 10 генераций
     if (user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 10) {
-      return NextResponse.json(
+        return NextResponse.json(
         {
           error: 'Trial limit reached. Upgrade to Pro for unlimited generations.',
           code: 'LIMIT_REACHED',
           remainingTokens: { daily: 0, monthly: -1 }
         },
-        { status: 429 }
-      )
+          { status: 429 }
+        )
     }
 
     // Generate content using Yandex GPT
@@ -87,11 +121,11 @@ export async function POST(request: NextRequest) {
       tokensUsed = 100
     }
     
-    // Сохраняем и инкрементим
+    // Сохраняем и инкрементим (через admin)
     let generation = null
     try {
       console.log('Saving generation to database for user:', user.id)
-      const { data: genData, error: generationError } = await supabase
+      const { data: genData, error: generationError } = await admin
         .from('generations')
         .insert({
           user_id: user.id,
@@ -114,13 +148,16 @@ export async function POST(request: NextRequest) {
       const updatedDay = (user.usage_count_day || 0) + 1
       console.log('Updating user usage count:', { old: user.usage_count_day, new: updatedDay })
       
-      await updateUserProfile(user.id, {
-        usage_count_day: updatedDay,
-      })
-      
-      // Также обновим локальную копию, чтобы верно посчитать remaining
-      user.usage_count_day = updatedDay
-      console.log('User usage count updated successfully')
+      const { error: updErr } = await admin
+        .from('user_profiles')
+        .update({ usage_count_day: updatedDay })
+        .eq('id', user.id)
+      if (updErr) {
+        console.error('Error updating user usage (admin):', updErr)
+      } else {
+        user.usage_count_day = updatedDay
+        console.log('User usage count updated successfully')
+      }
     } catch (dbError) {
       console.error('Database error:', dbError)
       // НЕ прерываем выполнение, если база не работает
@@ -338,17 +375,7 @@ ${basePrompt.includes('кофейн') ? 'Уютная кофейня в цент
 **Детали:** высокое разрешение, четкие линии, приятная эстетика
 
 *Описание создано с помощью AIКонтент*`
-
-      default:
-        return `✨ Сгенерированный контент
-
-${basePrompt.includes('кофейн') ? 'Кофейня - это место, где люди могут отдохнуть и насладиться вкусным кофе.' : 'Качественный контент - основа успешного маркетинга.'}
-
-${basePrompt.includes('акци') ? 'Специальные предложения помогают привлечь новых клиентов.' : 'Важно создавать контент, который будет полезен вашей аудитории.'}
-
----
-*Создано с помощью AIКонтент*`
-    }
+      }
   }
   
   return generateSmartContent(prompt, templateType)
