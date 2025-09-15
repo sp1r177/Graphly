@@ -34,37 +34,30 @@ export async function POST(request: NextRequest) {
     const yandexApiKey = process.env.YANDEX_API_KEY || process.env.YANDEX_GPT_API_KEY
     const yandexFolderId = process.env.YANDEX_FOLDER_ID || process.env.YANDEX_GPT_FOLDER_ID
 
-    // Всегда используем fallback генерацию для начала
-    console.log('Using fallback generation for now')
-    generatedText = await generateContent(prompt, templateType)
-    tokensUsed = 100
-    
-    // TODO: Включить Yandex GPT когда будет настроен
-    /*
+    // Пытаемся сгенерировать через Yandex GPT, при ошибке используем fallback
     if (yandexApiKey && yandexFolderId) {
       try {
         console.log('Starting Yandex GPT generation:', { prompt, templateType })
         const result = await yandexGPT.generateContent(prompt, templateType)
-        generatedText = result.text
-        tokensUsed = result.tokensUsed
+        generatedText = (result.text && result.text.trim().length > 0)
+          ? result.text
+          : await generateContent(prompt, templateType)
+        tokensUsed = result.tokensUsed || 0
         console.log('Yandex GPT generation successful:', { textLength: generatedText.length, tokensUsed })
       } catch (error) {
-        console.error('Yandex GPT generation failed:', {
+        console.error('Yandex GPT generation failed, using fallback:', {
           error: error instanceof Error ? error.message : 'Unknown error',
           prompt,
           templateType
         })
-        // Fallback to mock generation if Yandex GPT fails
         generatedText = await generateContent(prompt, templateType)
         tokensUsed = 100
-        console.log('Using fallback generation')
       }
     } else {
-      console.log('Yandex GPT not configured, using fallback generation')
+      console.warn('YANDEX_API_KEY or YANDEX_FOLDER_ID missing → using fallback generation')
       generatedText = await generateContent(prompt, templateType)
       tokensUsed = 100
     }
-    */
     
     // Save generation to database (optional)
     let generation = null
