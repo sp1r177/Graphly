@@ -154,7 +154,9 @@ export function Providers({ children }: { children: ReactNode }) {
               setUser(apiUserData)
               localStorage.setItem('user', JSON.stringify(apiUserData))
             } else {
-              console.log('API auth failed, keeping localStorage user')
+              console.log('API auth failed, keeping localStorage user for now')
+              // НЕ сбрасываем пользователя, если он есть в localStorage
+              // Пусть работает с локальными данными
             }
             
             return
@@ -177,9 +179,8 @@ export function Providers({ children }: { children: ReactNode }) {
           setUser(userData)
           localStorage.setItem('user', JSON.stringify(userData))
         } else {
-          console.log('Auth failed, setting user to null')
+          console.log('No API auth available, user stays null')
           setUser(null)
-          localStorage.removeItem('user')
         }
       } catch (error) {
         console.error('Auth check failed:', error)
