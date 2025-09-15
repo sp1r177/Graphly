@@ -64,22 +64,32 @@ export async function POST(request: NextRequest) {
     let generatedText: string
     let tokensUsed: number = 0
 
-    try {
-      console.log('Starting Yandex GPT generation:', { prompt, templateType })
-      const result = await yandexGPT.generateContent(prompt, templateType)
-      generatedText = result.text
-      tokensUsed = result.tokensUsed
-      console.log('Yandex GPT generation successful:', { textLength: generatedText.length, tokensUsed })
-    } catch (error) {
-      console.error('Yandex GPT generation failed:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        prompt,
-        templateType
-      })
-      // Fallback to mock generation if Yandex GPT fails
+    // Check if Yandex GPT is configured
+    const yandexApiKey = process.env.YANDEX_API_KEY || process.env.YANDEX_GPT_API_KEY
+    const yandexFolderId = process.env.YANDEX_FOLDER_ID || process.env.YANDEX_GPT_FOLDER_ID
+
+    if (!yandexApiKey || !yandexFolderId) {
+      console.log('Yandex GPT not configured, using fallback generation')
       generatedText = await generateContent(prompt, templateType)
-      tokensUsed = 100 // Default token count for fallback
-      console.log('Using fallback generation')
+      tokensUsed = 100
+    } else {
+      try {
+        console.log('Starting Yandex GPT generation:', { prompt, templateType })
+        const result = await yandexGPT.generateContent(prompt, templateType)
+        generatedText = result.text
+        tokensUsed = result.tokensUsed
+        console.log('Yandex GPT generation successful:', { textLength: generatedText.length, tokensUsed })
+      } catch (error) {
+        console.error('Yandex GPT generation failed:', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          prompt,
+          templateType
+        })
+        // Fallback to mock generation if Yandex GPT fails
+        generatedText = await generateContent(prompt, templateType)
+        tokensUsed = 100 // Default token count for fallback
+        console.log('Using fallback generation')
+      }
     }
     
     // Save generation to database
