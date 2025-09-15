@@ -16,15 +16,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Пытаемся определить пользователя, но не блокируем анонимов
+    // Требуем авторизацию
     const authUser = await getUserFromRequest(request)
-    const user = authUser ? await getUserProfile(authUser.id) : null
+    if (!authUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized', code: 'NOT_AUTHENTICATED' },
+        { status: 401 }
+      )
+    }
 
-    // Лимиты применяем только к авторизованным
-    if (user && user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 10) {
+    const user = await getUserProfile(authUser.id)
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Триал: всего 10 генераций
+    if (user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 10) {
       return NextResponse.json(
         {
-          error: 'Daily generation limit reached. Upgrade to Pro for unlimited generations.',
+          error: 'Trial limit reached. Upgrade to Pro for unlimited generations.',
           code: 'LIMIT_REACHED',
           remainingTokens: { daily: 0, monthly: -1 }
         },
@@ -65,35 +75,36 @@ export async function POST(request: NextRequest) {
       tokensUsed = 100
     }
     
-    // Сохраняем и инкрементим только для авторизованных
+    // Сохраняем и инкрементим
     let generation = null
-    if (user) {
-      try {
-        const { data: genData, error: generationError } = await supabase
-          .from('generations')
-          .insert({
-            user_id: user.id,
-            prompt,
-            output_text: generatedText,
-            template_type: templateType,
-            tokens_used: tokensUsed,
-          })
-          .select()
-          .single()
-
-        if (!generationError) {
-          generation = genData
-        } else {
-          console.error('Error saving generation:', generationError)
-        }
-
-        await updateUserProfile(user.id, {
-          usage_count_day: (user.usage_count_day || 0) + 1,
-          usage_count_month: (user.usage_count_month || 0) + 1,
+    try {
+      const { data: genData, error: generationError } = await supabase
+        .from('generations')
+        .insert({
+          user_id: user.id,
+          prompt,
+          output_text: generatedText,
+          template_type: templateType,
+          tokens_used: tokensUsed,
         })
-      } catch (dbError) {
-        console.error('Database error:', dbError)
+        .select()
+        .single()
+
+      if (!generationError) {
+        generation = genData
+      } else {
+        console.error('Error saving generation:', generationError)
       }
+
+      // Для триала используем usage_count_day как "всего использовано"
+      const updatedDay = (user.usage_count_day || 0) + 1
+      await updateUserProfile(user.id, {
+        usage_count_day: updatedDay,
+      })
+      // Также обновим локальную копию, чтобы верно посчитать remaining
+      user.usage_count_day = updatedDay
+    } catch (dbError) {
+      console.error('Database error:', dbError)
     }
 
     return NextResponse.json({
@@ -102,15 +113,13 @@ export async function POST(request: NextRequest) {
       templateType,
       timestamp: generation?.created_at || new Date().toISOString(),
       tokensUsed,
-      remainingTokens: user ? {
+      remainingTokens: {
         daily: user.subscription_status === 'FREE'
-          ? Math.max(0, 10 - ((user.usage_count_day || 0) + 1))
+          ? Math.max(0, 10 - (user.usage_count_day || 0))
           : -1,
-        monthly: user.subscription_status === 'PRO'
-          ? Math.max(0, 100 - ((user.usage_count_month || 0) + 1))
-          : -1
-      } : { daily: -1, monthly: -1 },
-      upsell: !!(user && user.subscription_status === 'FREE' && ((user.usage_count_day || 0) + 1) >= 10)
+        monthly: -1
+      },
+      upsell: user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 10
     })
 
   } catch (error) {
