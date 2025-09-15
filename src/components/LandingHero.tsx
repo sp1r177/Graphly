@@ -23,10 +23,6 @@ export function LandingHero() {
   }>({ isOpen: false, mode: 'login' })
 
   const handleGenerate = async () => {
-    if (isAuthLoading) {
-      alert('Загрузка профиля... Попробуйте через секунду.')
-      return
-    }
     if (!user) {
       alert('Авторизуйтесь, чтобы генерировать контент')
       window.location.href = '/auth/login'
@@ -36,11 +32,31 @@ export function LandingHero() {
 
     setIsLoading(true)
     try {
+      const getAccessToken = () => {
+        try {
+          const direct = localStorage.getItem('sb-access-token')
+          if (direct) return direct
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i) as string
+            if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
+              const v = localStorage.getItem(k)
+              if (!v) continue
+              const json = JSON.parse(v)
+              const token = (json as any)?.access_token || (json as any)?.currentSession?.access_token
+              if (token) return token
+            }
+          }
+        } catch {}
+        return null
+      }
+
+      const headers: any = { 'Content-Type': 'application/json' }
+      const bearer = getAccessToken()
+      if (bearer) headers['Authorization'] = `Bearer ${bearer}`
+
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           prompt,
