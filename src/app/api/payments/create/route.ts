@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
-import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const authUser = getUserFromRequest(request)
+    const authUser = await getUserFromRequest(request)
     
     if (!authUser) {
       return NextResponse.json(
@@ -33,25 +32,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create payment record
-    const payment = await prisma.payment.create({
-      data: {
-        userId: authUser.userId,
-        amount: parseFloat(amount),
-        currency,
-        status: 'PENDING',
-        subscriptionType: planId === 'start' ? 'PRO' : 'ULTRA',
-      }
-    })
-
-    // In production, integrate with Yandex.Kassa here
-    // For now, return mock payment data
-    const mockPaymentUrl = `https://yandex.ru/checkout?payment_id=${payment.id}&amount=${amount}&currency=${currency}`
+    // Mock payment creation (will be implemented later)
+    const mockPaymentId = `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const mockPaymentUrl = `https://yandex.ru/checkout?payment_id=${mockPaymentId}&amount=${amount}&currency=${currency}`
 
     return NextResponse.json({
-      paymentId: payment.id,
+      paymentId: mockPaymentId,
       paymentUrl: mockPaymentUrl,
-      status: 'PENDING'
+      status: 'PENDING',
+      message: 'Payment system will be implemented later'
     })
 
   } catch (error) {

@@ -7,7 +7,6 @@
     "build": "DISABLE_ESLINT_PLUGIN=true next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "node postinstall.js"
   },
   "dependencies": {
     "next": "14.0.0",

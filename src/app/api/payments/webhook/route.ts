@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { supabase } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,45 +10,53 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json()
     
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
     // Handle different webhook events
     switch (body.event) {
       case 'payment.succeeded':
         // Update payment status
-        await prisma.payment.update({
-          where: { yandexPaymentId: body.object.id },
-          data: { status: 'COMPLETED' }
-        })
+        await supabase
+          .from('payments')
+          .update({ status: 'COMPLETED' })
+          .eq('yandex_payment_id', body.object.id)
         
         // Update user subscription
-        const payment = await prisma.payment.findFirst({
-          where: { yandexPaymentId: body.object.id },
-          include: { user: true }
-        })
+        const { data: payment } = await supabase
+          .from('payments')
+          .select('user_id, subscription_type')
+          .eq('yandex_payment_id', body.object.id)
+          .single()
         
         if (payment) {
-          await prisma.user.update({
-            where: { id: payment.userId },
-            data: {
-              subscriptionStatus: payment.subscriptionType,
-              usageCountDay: 0,
-              usageCountMonth: 0,
-            }
-          })
+          await supabase
+            .from('user_profiles')
+            .update({
+              subscription_status: payment.subscription_type,
+              usage_count_day: 0,
+              usage_count_month: 0,
+            })
+            .eq('id', payment.user_id)
         }
         break
         
       case 'payment.cancelled':
-        await prisma.payment.update({
-          where: { yandexPaymentId: body.object.id },
-          data: { status: 'CANCELLED' }
-        })
+        await supabase
+          .from('payments')
+          .update({ status: 'CANCELLED' })
+          .eq('yandex_payment_id', body.object.id)
         break
         
       case 'payment.failed':
-        await prisma.payment.update({
-          where: { yandexPaymentId: body.object.id },
-          data: { status: 'FAILED' }
-        })
+        await supabase
+          .from('payments')
+          .update({ status: 'FAILED' })
+          .eq('yandex_payment_id', body.object.id)
         break
     }
     
