@@ -127,7 +127,24 @@ export async function getUserFromRequest(request: NextRequest) {
 
   if (!token) {
     console.log('No token found in request')
-    return null
+    // Попробуем прочитать наш резервный идентификатор сессии
+    const fallbackUserId = request.cookies.get('graphly-user-id')?.value
+    if (!fallbackUserId) {
+      return null
+    }
+    try {
+      // Получим профиль и соберём минимальный объект пользователя
+      const profile = await getUserProfile(fallbackUserId)
+      if (!profile) return null
+      return {
+        id: profile.id,
+        email: profile.email,
+        user_metadata: { name: profile.name },
+      } as any
+    } catch (e) {
+      console.error('Fallback auth by graphly-user-id failed:', e)
+      return null
+    }
   }
 
   console.log('Using token:', token.substring(0, 20) + '...')
