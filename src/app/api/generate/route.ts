@@ -16,19 +16,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Аутентифицированный пользователь и профиль
+    // Пытаемся определить пользователя, но не блокируем анонимов
     const authUser = await getUserFromRequest(request)
-    if (!authUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const user = authUser ? await getUserProfile(authUser.id) : null
 
-    const user = await getUserProfile(authUser.id)
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // Лимиты: FREE = 10 генераций в день
-    if (user.subscription_status === 'FREE' && user.usage_count_day >= 10) {
+    // Лимиты применяем только к авторизованным
+    if (user && user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 10) {
       return NextResponse.json(
         {
           error: 'Daily generation limit reached. Upgrade to Pro for unlimited generations.',
@@ -72,33 +65,35 @@ export async function POST(request: NextRequest) {
       tokensUsed = 100
     }
     
-    // Save generation + increment usage counts
+    // Сохраняем и инкрементим только для авторизованных
     let generation = null
-    try {
-      const { data: genData, error: generationError } = await supabase
-        .from('generations')
-        .insert({
-          user_id: user.id,
-          prompt,
-          output_text: generatedText,
-          template_type: templateType,
-          tokens_used: tokensUsed,
+    if (user) {
+      try {
+        const { data: genData, error: generationError } = await supabase
+          .from('generations')
+          .insert({
+            user_id: user.id,
+            prompt,
+            output_text: generatedText,
+            template_type: templateType,
+            tokens_used: tokensUsed,
+          })
+          .select()
+          .single()
+
+        if (!generationError) {
+          generation = genData
+        } else {
+          console.error('Error saving generation:', generationError)
+        }
+
+        await updateUserProfile(user.id, {
+          usage_count_day: (user.usage_count_day || 0) + 1,
+          usage_count_month: (user.usage_count_month || 0) + 1,
         })
-        .select()
-        .single()
-
-      if (!generationError) {
-        generation = genData
-      } else {
-        console.error('Error saving generation:', generationError)
+      } catch (dbError) {
+        console.error('Database error:', dbError)
       }
-
-      await updateUserProfile(user.id, {
-        usage_count_day: (user.usage_count_day || 0) + 1,
-        usage_count_month: (user.usage_count_month || 0) + 1,
-      })
-    } catch (dbError) {
-      console.error('Database error:', dbError)
     }
 
     return NextResponse.json({
@@ -107,15 +102,15 @@ export async function POST(request: NextRequest) {
       templateType,
       timestamp: generation?.created_at || new Date().toISOString(),
       tokensUsed,
-      remainingTokens: {
+      remainingTokens: user ? {
         daily: user.subscription_status === 'FREE'
           ? Math.max(0, 10 - ((user.usage_count_day || 0) + 1))
           : -1,
         monthly: user.subscription_status === 'PRO'
           ? Math.max(0, 100 - ((user.usage_count_month || 0) + 1))
           : -1
-      },
-      upsell: user.subscription_status === 'FREE' && ((user.usage_count_day || 0) + 1) >= 10
+      } : { daily: -1, monthly: -1 },
+      upsell: !!(user && user.subscription_status === 'FREE' && ((user.usage_count_day || 0) + 1) >= 10)
     })
 
   } catch (error) {
