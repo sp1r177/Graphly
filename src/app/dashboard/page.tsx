@@ -19,7 +19,7 @@ interface Generation {
 
 export default function DashboardPage() {
   const { t } = useLanguage()
-  const { user } = useUser()
+  const { user, setUser } = useUser()
   const [prompt, setPrompt] = useState('')
   const [templateType, setTemplateType] = useState('VK_POST')
   const [isLoading, setIsLoading] = useState(false)
@@ -49,6 +49,11 @@ export default function DashboardPage() {
   }
 
   const handleGenerate = async () => {
+    if (!user) {
+      alert('Авторизуйтесь, чтобы генерировать контент')
+      window.location.href = '/auth/login'
+      return
+    }
     if (!prompt.trim()) return
 
     // Check usage limits
@@ -78,12 +83,34 @@ export default function DashboardPage() {
       const data = await response.json()
       setResult(data)
       
-      // Refresh generation history and user data
+      // Обновляем локальный счётчик, если API вернул remainingTokens
+      if (typeof data?.remainingTokens?.daily === 'number') {
+        const used = 10 - data.remainingTokens.daily
+        if (!isNaN(used)) {
+          const nextUser = { ...(user as any), usageCountDay: used }
+          setUser(nextUser)
+          localStorage.setItem('user', JSON.stringify(nextUser))
+        }
+        if (data.upsell) {
+          alert('Лимит триала исчерпан. Оформите Pro для продолжения.')
+          window.location.href = '/pricing'
+        }
+      }
+      
+      // Refresh generation history
       fetchGenerationHistory()
-      // In a real app, you'd also refresh user data here
     } catch (error) {
       console.error('Generation failed:', error)
-      alert('Ошибка генерации. Проверьте ключи Yandex GPT и повторите попытку.')
+      const msg = error instanceof Error ? error.message : ''
+      if (msg.includes('LIMIT') || msg.includes('429')) {
+        alert('Лимит триала исчерпан. Оформите Pro для продолжения.')
+        window.location.href = '/pricing'
+      } else if (msg.includes('Unauthorized')) {
+        alert('Авторизуйтесь, чтобы генерировать контент')
+        window.location.href = '/auth/login'
+      } else {
+        alert('Произошла ошибка при генерации. Попробуйте еще раз.')
+      }
     } finally {
       setIsLoading(false)
     }

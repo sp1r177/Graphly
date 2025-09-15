@@ -9,7 +9,7 @@ import { AuthModal } from './AuthModal'
 
 export function LandingHero() {
   const { t, language, setLanguage } = useLanguage()
-  const { user } = useUser()
+  const { user, setUser } = useUser()
   const [prompt, setPrompt] = useState('')
   const [templateType, setTemplateType] = useState('VK_POST')
   const [isLoading, setIsLoading] = useState(false)
@@ -23,6 +23,11 @@ export function LandingHero() {
   }>({ isOpen: false, mode: 'login' })
 
   const handleGenerate = async () => {
+    if (!user) {
+      alert('Авторизуйтесь, чтобы генерировать контент')
+      window.location.href = '/auth/login'
+      return
+    }
     if (!prompt.trim()) return
 
     setIsLoading(true)
@@ -45,10 +50,30 @@ export function LandingHero() {
 
       const data = await response.json()
       setResult(data)
+      if (typeof data?.remainingTokens?.daily === 'number') {
+        const used = 10 - data.remainingTokens.daily
+        if (!isNaN(used)) {
+          const nextUser = { ...(user as any), usageCountDay: used }
+          setUser(nextUser)
+          localStorage.setItem('user', JSON.stringify(nextUser))
+        }
+        if (data.upsell) {
+          alert('Лимит триала исчерпан. Оформите Pro для продолжения.')
+          window.location.href = '/pricing'
+        }
+      }
     } catch (error) {
       console.error('Generation failed:', error)
-      // Никаких фиктивных результатов — показываем ошибку
-      alert('Ошибка генерации. Проверьте ключи Yandex GPT и повторите попытку.')
+      const msg = error instanceof Error ? error.message : ''
+      if (msg.includes('LIMIT') || msg.includes('429')) {
+        alert('Лимит триала исчерпан. Оформите Pro для продолжения.')
+        window.location.href = '/pricing'
+      } else if (msg.includes('Unauthorized')) {
+        alert('Авторизуйтесь, чтобы генерировать контент')
+        window.location.href = '/auth/login'
+      } else {
+        alert('Произошла ошибка при генерации. Попробуйте еще раз.')
+      }
     } finally {
       setIsLoading(false)
     }
