@@ -26,7 +26,7 @@ YANDEX_GPT_MODEL="yandexgpt-5.1-pro"  # не используется в код�
 ## 3. Установка зависимостей
 
 ```bash
-npm install @yandex-cloud/sdk axios
+npm install axios
 ```
 
 ## 4. Миграция базы данных
