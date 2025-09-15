@@ -7,11 +7,12 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== GENERATE API DEBUG ===')
+    console.log('=== GENERATE API START ===')
     console.log('Cookies:', request.cookies.getAll().map(c => ({ name: c.name, hasValue: !!c.value })))
     console.log('Auth header:', request.headers.get('authorization') ? 'SET' : 'NOT_SET')
-    
+
     const { prompt, templateType } = await request.json()
+    console.log('Request data:', { prompt: prompt?.substring(0, 50) + '...', templateType })
 
     if (!prompt || !templateType) {
       return NextResponse.json(
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     // Получаем профиль пользователя
     const user = await getUserProfile(userId)
     console.log('User profile:', user ? { id: user.id, subscription: user.subscription_status, usage: user.usage_count_day } : 'NULL')
-    
+
     if (!user) {
       console.log('=== GENERATE API: NO USER PROFILE FOR ID:', userId, '===')
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -89,11 +90,12 @@ export async function POST(request: NextRequest) {
     // Сохраняем и инкрементим
     let generation = null
     try {
+      console.log('Saving generation to database for user:', user.id)
       const { data: genData, error: generationError } = await supabase
         .from('generations')
         .insert({
           user_id: user.id,
-          prompt,
+        prompt,
           output_text: generatedText,
           template_type: templateType,
           tokens_used: tokensUsed,
@@ -103,22 +105,28 @@ export async function POST(request: NextRequest) {
 
       if (!generationError) {
         generation = genData
+        console.log('Generation saved successfully:', generation.id)
       } else {
         console.error('Error saving generation:', generationError)
       }
 
       // Для триала используем usage_count_day как "всего использовано"
       const updatedDay = (user.usage_count_day || 0) + 1
+      console.log('Updating user usage count:', { old: user.usage_count_day, new: updatedDay })
+      
       await updateUserProfile(user.id, {
         usage_count_day: updatedDay,
       })
+      
       // Также обновим локальную копию, чтобы верно посчитать remaining
       user.usage_count_day = updatedDay
+      console.log('User usage count updated successfully')
     } catch (dbError) {
       console.error('Database error:', dbError)
+      // НЕ прерываем выполнение, если база не работает
     }
 
-    return NextResponse.json({
+    const response = {
       id: generation?.id || 'temp-' + Date.now(),
       text: generatedText,
       templateType,
@@ -131,7 +139,17 @@ export async function POST(request: NextRequest) {
         monthly: -1
       },
       upsell: user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 10
+    }
+    
+    console.log('=== GENERATE API SUCCESS ===')
+    console.log('Response:', { 
+      textLength: generatedText.length, 
+      tokensUsed, 
+      remainingDaily: response.remainingTokens.daily,
+      upsell: response.upsell
     })
+    
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('Generation error:', error)
