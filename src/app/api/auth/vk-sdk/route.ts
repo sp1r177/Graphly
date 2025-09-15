@@ -152,6 +152,15 @@ export async function POST(request: NextRequest) {
       console.log('No session token to set in cookie')
     }
 
+    // Всегда ставим вспомогательную куку с id пользователя, чтобы API мог авторизовать по ней
+    response.cookies.set('graphly-user-id', supabaseUser.id, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    })
+
     // Также устанавливаем куку с refresh токеном если есть
     if (sessionData?.properties?.refresh_token) {
       response.cookies.set('sb-refresh-token', sessionData.properties.refresh_token, {

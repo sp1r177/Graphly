@@ -49,6 +49,7 @@ export function VkIdWidget({ onSuccess, className }: VkIdWidgetProps) {
           const code = payload.code
           const deviceId = payload.device_id
 
+          // Обрабатываем в текущем окне, без дополнительных вкладок
           VKID.Auth.exchangeCode(code, deviceId)
             .then(vkidOnSuccess)
             .catch(vkidOnError)
