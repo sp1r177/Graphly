@@ -9,7 +9,7 @@ import { AuthModal } from './AuthModal'
 
 export function LandingHero() {
   const { t, language, setLanguage } = useLanguage()
-  const { user, setUser } = useUser()
+  const { user, setUser, isLoading: isAuthLoading } = useUser()
   const [prompt, setPrompt] = useState('')
   const [templateType, setTemplateType] = useState('VK_POST')
   const [isLoading, setIsLoading] = useState(false)
@@ -23,6 +23,10 @@ export function LandingHero() {
   }>({ isOpen: false, mode: 'login' })
 
   const handleGenerate = async () => {
+    if (isAuthLoading) {
+      alert('Загрузка профиля... Попробуйте через секунду.')
+      return
+    }
     if (!user) {
       alert('Авторизуйтесь, чтобы генерировать контент')
       window.location.href = '/auth/login'
@@ -37,6 +41,7 @@ export function LandingHero() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           prompt,
           templateType,
@@ -50,14 +55,14 @@ export function LandingHero() {
 
       const data = await response.json()
       setResult(data)
-      if (typeof data?.remainingTokens?.daily === 'number') {
-        const used = 10 - data.remainingTokens.daily
+      if (typeof (data as any)?.remainingTokens?.daily === 'number') {
+        const used = 10 - (data as any).remainingTokens.daily
         if (!isNaN(used)) {
           const nextUser = { ...(user as any), usageCountDay: used }
           setUser(nextUser)
           localStorage.setItem('user', JSON.stringify(nextUser))
         }
-        if (data.upsell) {
+        if ((data as any).upsell) {
           alert('Лимит триала исчерпан. Оформите Pro для продолжения.')
           window.location.href = '/pricing'
         }

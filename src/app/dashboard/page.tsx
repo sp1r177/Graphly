@@ -19,7 +19,7 @@ interface Generation {
 
 export default function DashboardPage() {
   const { t } = useLanguage()
-  const { user, setUser } = useUser()
+  const { user, setUser, isLoading: isAuthLoading } = useUser()
   const [prompt, setPrompt] = useState('')
   const [templateType, setTemplateType] = useState('VK_POST')
   const [isLoading, setIsLoading] = useState(false)
@@ -49,6 +49,10 @@ export default function DashboardPage() {
   }
 
   const handleGenerate = async () => {
+    if (isAuthLoading) {
+      alert('Загрузка профиля... Попробуйте через секунду.')
+      return
+    }
     if (!user) {
       alert('Авторизуйтесь, чтобы генерировать контент')
       window.location.href = '/auth/login'
@@ -69,6 +73,7 @@ export default function DashboardPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           prompt,
           templateType,
@@ -198,7 +203,7 @@ export default function DashboardPage() {
                 {/* Generate Button */}
                 <Button
                   onClick={handleGenerate}
-                  disabled={isLoading || !prompt.trim() || (user?.subscriptionStatus === 'FREE' && user?.usageCountDay >= 10)}
+                  disabled={isLoading || isAuthLoading || !prompt.trim() || (user?.subscriptionStatus === 'FREE' && (user?.usageCountDay || 0) >= 10)}
                   variant="primary"
                   className="w-full"
                 >
