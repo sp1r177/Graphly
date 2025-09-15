@@ -129,17 +129,24 @@ export async function getUserFromRequest(request: NextRequest) {
   if (!token || token.split('.').length !== 3) {
     console.log('No valid token found, trying fallback auth')
     const fallbackUserId = request.cookies.get('graphly-user-id')?.value
+    console.log('Fallback user ID from cookie:', fallbackUserId)
+    
     if (!fallbackUserId) {
-      console.log('No fallback user ID found')
+      console.log('No fallback user ID found in cookies')
+      console.log('Available cookies:', request.cookies.getAll().map(c => c.name))
       return null
     }
+    
     try {
-      // Получим профиль и соберём минимальный объект пользователя
+      console.log('Attempting to get profile for fallback user:', fallbackUserId)
       const profile = await getUserProfile(fallbackUserId)
+      console.log('Profile lookup result:', profile ? 'FOUND' : 'NOT_FOUND')
+      
       if (!profile) {
-        console.log('No profile found for fallback user ID')
+        console.log('No profile found for fallback user ID:', fallbackUserId)
         return null
       }
+      
       console.log('Fallback auth successful for user:', profile.id)
       return {
         id: profile.id,
