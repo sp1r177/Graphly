@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Update user usage counts
-        await updateUserProfile(authUser.id, {
+        await updateUserProfile(user.id, {
           usage_count_day: user.usage_count_day + 1,
           usage_count_month: user.usage_count_month + 1,
         })
