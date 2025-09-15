@@ -153,12 +153,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Всегда ставим вспомогательную куку с id пользователя, чтобы API мог авторизовать по ней
+    console.log('Setting graphly-user-id cookie for user:', supabaseUser.id)
     response.cookies.set('graphly-user-id', supabaseUser.id, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
+    })
+    
+    console.log('VK auth completed for user:', {
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      hasProfile: !!userProfile
     })
 
     // Также устанавливаем куку с refresh токеном если есть
