@@ -41,13 +41,20 @@ export class YandexGPTService {
     // Поддержка разных названий переменных окружения
     this.apiKey = process.env.YANDEX_GPT_API_KEY || process.env.YANDEX_API_KEY || ''
     this.folderId = process.env.YANDEX_GPT_FOLDER_ID || process.env.YANDEX_FOLDER_ID || ''
-    this.useAsyncMode = process.env.YANDEX_GPT_ASYNC_MODE === 'true' || true // По умолчанию асинхронный режим
+    this.useAsyncMode = process.env.YANDEX_GPT_ASYNC_MODE === 'true' || false // По умолчанию синхронный режим
     this.baseUrl = this.useAsyncMode 
       ? 'https://llm.api.cloud.yandex.net/foundationModels/v1/completionAsync'
       : 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion'
   }
 
   private validateConfig(): void {
+    console.log('Yandex GPT Config:', {
+      apiKey: this.apiKey ? 'SET' : 'NOT_SET',
+      folderId: this.folderId ? 'SET' : 'NOT_SET',
+      useAsyncMode: this.useAsyncMode,
+      baseUrl: this.baseUrl
+    })
+    
     if (!this.apiKey) {
       throw new Error('YANDEX_GPT_API_KEY is not configured')
     }
@@ -100,6 +107,12 @@ export class YandexGPTService {
     }
 
     try {
+      console.log('Sending request to Yandex GPT Sync API:', {
+        url: this.baseUrl,
+        modelUri: requestData.modelUri,
+        messagesCount: requestData.messages.length
+      })
+
       const response = await axios.post<YandexGPTResponse>(
         this.baseUrl,
         requestData,
@@ -107,21 +120,37 @@ export class YandexGPTService {
           headers: {
             'Authorization': `Api-Key ${this.apiKey}`,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 30000 // 30 секунд таймаут
         }
       )
+
+      console.log('Yandex GPT Sync API response:', {
+        status: response.status,
+        hasResult: !!response.data.result,
+        alternativesCount: response.data.result?.alternatives?.length || 0
+      })
 
       const result = response.data.result
       const generatedText = result.alternatives[0]?.message?.text || ''
       const tokensUsed = parseInt(result.usage.totalTokens) || 0
+
+      console.log('Generated content:', {
+        textLength: generatedText.length,
+        tokensUsed
+      })
 
       return {
         text: generatedText,
         tokensUsed
       }
     } catch (error) {
-      console.error('Yandex GPT Sync API error:', error)
-      throw new Error('Failed to generate content with Yandex GPT (Sync)')
+      console.error('Yandex GPT Sync API error:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        response: error instanceof Error && 'response' in error ? error.response : null,
+        status: error instanceof Error && 'response' in error ? (error as any).response?.status : null
+      })
+      throw new Error(`Failed to generate content with Yandex GPT (Sync): ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

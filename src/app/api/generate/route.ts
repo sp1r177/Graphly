@@ -89,14 +89,21 @@ export async function POST(request: NextRequest) {
     let tokensUsed: number = 0
 
     try {
+      console.log('Starting Yandex GPT generation:', { prompt, templateType })
       const result = await yandexGPT.generateContent(prompt, templateType)
       generatedText = result.text
       tokensUsed = result.tokensUsed
+      console.log('Yandex GPT generation successful:', { textLength: generatedText.length, tokensUsed })
     } catch (error) {
-      console.error('Yandex GPT generation failed:', error)
+      console.error('Yandex GPT generation failed:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        prompt,
+        templateType
+      })
       // Fallback to mock generation if Yandex GPT fails
       generatedText = await generateContent(prompt, templateType)
       tokensUsed = 100 // Default token count for fallback
+      console.log('Using fallback generation')
     }
     
     // Save generation to database
