@@ -82,7 +82,8 @@ export class YandexGPTService {
     templateType: string,
     systemPrompt?: string
   ): Promise<{ text: string; tokensUsed: number }> {
-    const modelUri = `gpt://${this.folderId}/yandexgpt-5.1-pro`
+    const modelName = process.env.YANDEX_GPT_MODEL || 'yandexgpt/latest'
+    const modelUri = `gpt://${this.folderId}/${modelName}`
     
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; text: string }> = []
     
@@ -159,7 +160,8 @@ export class YandexGPTService {
     templateType: string,
     systemPrompt?: string
   ): Promise<{ text: string; tokensUsed: number }> {
-    const modelUri = `gpt://${this.folderId}/yandexgpt-5.1-pro`
+    const modelName = process.env.YANDEX_GPT_MODEL || 'yandexgpt/latest'
+    const modelUri = `gpt://${this.folderId}/${modelName}`
     
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; text: string }> = []
     

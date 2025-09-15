@@ -47,11 +47,8 @@ export function LandingHero() {
       setResult(data)
     } catch (error) {
       console.error('Generation failed:', error)
-      // Убираем заглушку ошибки - показываем что генерация прошла
-      setResult({
-        text: `Сгенерированный контент: ${prompt}`,
-        imageUrl: null
-      })
+      // Никаких фиктивных результатов — показываем ошибку
+      alert('Ошибка генерации. Проверьте ключи Yandex GPT и повторите попытку.')
     } finally {
       setIsLoading(false)
     }

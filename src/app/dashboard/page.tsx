@@ -83,11 +83,7 @@ export default function DashboardPage() {
       // In a real app, you'd also refresh user data here
     } catch (error) {
       console.error('Generation failed:', error)
-      // Убираем заглушку ошибки - показываем что генерация прошла
-      setResult({
-        text: `Сгенерированный контент: ${prompt}`,
-        imageUrl: null
-      })
+      alert('Ошибка генерации. Проверьте ключи Yandex GPT и повторите попытку.')
     } finally {
       setIsLoading(false)
     }
