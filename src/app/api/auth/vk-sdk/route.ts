@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
 
     // Устанавливаем куку с токеном доступа только если токен есть
     if (sessionToken) {
+      console.log('Setting cookie with token:', sessionToken.substring(0, 20) + '...')
       response.cookies.set('sb-access-token', sessionToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -147,6 +148,8 @@ export async function POST(request: NextRequest) {
         path: '/',
         maxAge: 60 * 60 * 24 * 7, // 7 days
       })
+    } else {
+      console.log('No session token to set in cookie')
     }
 
     // Также устанавливаем куку с refresh токеном если есть

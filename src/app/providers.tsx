@@ -132,14 +132,19 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log('Checking auth in provider...')
         const response = await fetch('/api/auth/me', {
           credentials: 'include',
         })
         
+        console.log('Auth response status:', response.status)
+        
         if (response.ok) {
           const userData = await response.json()
+          console.log('User data from API:', userData)
           setUser(userData)
         } else {
+          console.log('Auth failed, setting user to null')
           setUser(null)
         }
       } catch (error) {

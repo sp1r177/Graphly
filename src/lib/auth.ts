@@ -115,15 +115,22 @@ export async function getUserFromRequest(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   let token = authHeader?.replace('Bearer ', '') || undefined
 
+  console.log('Authorization header:', authHeader)
+  console.log('Token from header:', token)
+
   // Пытаемся прочитать токен из куки, если заголовка нет
   if (!token) {
-    token = request.cookies.get('sb-access-token')?.value
+    const cookieToken = request.cookies.get('sb-access-token')?.value
+    console.log('Token from cookie:', cookieToken)
+    token = cookieToken
   }
 
   if (!token) {
     console.log('No token found in request')
     return null
   }
+
+  console.log('Using token:', token.substring(0, 20) + '...')
 
   try {
     const { data: { user }, error } = await supabase.auth.getUser(token)
@@ -135,6 +142,7 @@ export async function getUserFromRequest(request: NextRequest) {
       console.log('No user found for token')
       return null
     }
+    console.log('User found:', user.id, user.email)
     return user
   } catch (error) {
     console.error('Exception getting user from token:', error)

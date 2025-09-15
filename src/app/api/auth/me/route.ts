@@ -6,9 +6,14 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('API /api/auth/me called')
+    console.log('Cookies:', request.cookies.getAll())
+    
     const authUser = await getUserFromRequest(request)
+    console.log('Auth user:', authUser)
     
     if (!authUser) {
+      console.log('No auth user found, returning 401')
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
