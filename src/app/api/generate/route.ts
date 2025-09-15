@@ -7,6 +7,10 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== GENERATE API DEBUG ===')
+    console.log('Cookies:', request.cookies.getAll().map(c => ({ name: c.name, hasValue: !!c.value })))
+    console.log('Auth header:', request.headers.get('authorization') ? 'SET' : 'NOT_SET')
+    
     const { prompt, templateType } = await request.json()
 
     if (!prompt || !templateType) {
@@ -18,7 +22,10 @@ export async function POST(request: NextRequest) {
 
     // Требуем авторизацию
     const authUser = await getUserFromRequest(request)
+    console.log('AuthUser result:', authUser ? { id: authUser.id, email: authUser.email } : 'NULL')
+    
     if (!authUser) {
+      console.log('=== GENERATE API: NO AUTH USER ===')
       return NextResponse.json(
         { error: 'Unauthorized', code: 'NOT_AUTHENTICATED' },
         { status: 401 }
@@ -26,7 +33,10 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await getUserProfile(authUser.id)
+    console.log('User profile:', user ? { id: user.id, subscription: user.subscription_status, usage: user.usage_count_day } : 'NULL')
+    
     if (!user) {
+      console.log('=== GENERATE API: NO USER PROFILE ===')
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
