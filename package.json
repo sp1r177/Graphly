@@ -4,11 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate || echo 'Prisma generate failed, continuing...' && DISABLE_ESLINT_PLUGIN=true next build",
+    "build": "DISABLE_ESLINT_PLUGIN=true next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "node postinstall.js",
-    "seed": "node prisma/seed.js"
+    "postinstall": "node postinstall.js"
   },
   "dependencies": {
     "next": "14.0.0",
@@ -27,8 +26,6 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "tailwind-merge": "^1.14.0",
-    "prisma": "^5.5.2",
-    "@prisma/client": "^5.5.2",
     "bcryptjs": "^2.4.3",
     "@types/bcryptjs": "^2.4.4",
     "jsonwebtoken": "^9.0.2",
