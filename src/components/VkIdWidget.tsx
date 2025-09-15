@@ -97,6 +97,8 @@ export function VkIdWidget({ onSuccess, className }: VkIdWidgetProps) {
       
       // Сохраняем пользователя в localStorage как backup
       localStorage.setItem('user', JSON.stringify(result.user))
+      // Ставим вспомогательную куку с id (подхват на бэкенде при проблемах с токеном)
+      document.cookie = `graphly-user-id=${encodeURIComponent(result.user.id)}; path=/; max-age=${60*60*24*7}`
       
       // Вызываем callback если есть
       if (onSuccess) {
