@@ -106,6 +106,13 @@ export async function POST(request: NextRequest) {
       try {
         console.log('Starting Yandex GPT generation:', { prompt, templateType })
         const result = await yandexGPT.generateContent(prompt, templateType)
+        console.log('Yandex GPT raw result:', { 
+          hasText: !!result.text, 
+          textLength: result.text?.length || 0,
+          tokensUsed: result.tokensUsed,
+          textPreview: result.text?.substring(0, 100) || 'NO_TEXT'
+        })
+        
         generatedText = (result.text && result.text.trim().length > 0)
           ? result.text
           : await generateContent(prompt, templateType)
@@ -114,6 +121,8 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error('Yandex GPT generation failed, using fallback:', {
           error: error instanceof Error ? error.message : 'Unknown error',
+          status: (error as any)?.response?.status || null,
+          data: (error as any)?.response?.data || null,
           prompt,
           templateType
         })
