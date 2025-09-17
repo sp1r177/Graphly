@@ -5,7 +5,7 @@ interface YandexGPTRequest {
   completionOptions: {
     stream: boolean
     temperature: number
-    maxTokens: string
+    maxTokens: number
   }
   messages: Array<{
     role: 'system' | 'user' | 'assistant'
@@ -148,8 +148,8 @@ export class YandexGPTService {
     } catch (error) {
       console.error('Yandex GPT Sync API error:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        response: error instanceof Error && 'response' in error ? error.response : null,
-        status: error instanceof Error && 'response' in error ? (error as any).response?.status : null
+        status: (error as any)?.response?.status || null,
+        data: (error as any)?.response?.data || null
       })
       throw new Error(`Failed to generate content with Yandex GPT (Sync): ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
@@ -203,8 +203,12 @@ export class YandexGPTService {
       // 2. Ожидаем завершения операции
       return await this.waitForAsyncCompletion(operationId)
     } catch (error) {
-      console.error('Yandex GPT Async API error:', error)
-      throw new Error('Failed to generate content with Yandex GPT (Async)')
+      console.error('Yandex GPT Async API error:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        status: (error as any)?.response?.status || null,
+        data: (error as any)?.response?.data || null
+      })
+      throw new Error(`Failed to generate content with Yandex GPT (Async): ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -269,17 +273,17 @@ export class YandexGPTService {
            'Ты эксперт по созданию качественного контента. Создавай интересный, полезный и структурированный контент.'
   }
 
-  private getMaxTokensForTemplate(templateType: string): string {
+  private getMaxTokensForTemplate(templateType: string): number {
     const tokenLimits = {
-      'VK_POST': '500',
-      'TELEGRAM_POST': '800',
-      'EMAIL_CAMPAIGN': '1500',
-      'BLOG_ARTICLE': '3000',
-      'VIDEO_SCRIPT': '2000',
-      'IMAGE_GENERATION': '300'
+      'VK_POST': 500,
+      'TELEGRAM_POST': 800,
+      'EMAIL_CAMPAIGN': 1500,
+      'BLOG_ARTICLE': 3000,
+      'VIDEO_SCRIPT': 2000,
+      'IMAGE_GENERATION': 300
     }
 
-    return tokenLimits[templateType as keyof typeof tokenLimits] || '1000'
+    return tokenLimits[templateType as keyof typeof tokenLimits] || 1000
   }
 
   // Метод для проверки доступности API
