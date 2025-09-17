@@ -363,15 +363,15 @@ export class YandexGPTService {
 
   private getMaxTokensForTemplate(templateType: string): number {
     const tokenLimits = {
-      'VK_POST': 500,
-      'TELEGRAM_POST': 800,
-      'EMAIL_CAMPAIGN': 1500,
-      'BLOG_ARTICLE': 3000,
-      'VIDEO_SCRIPT': 2000,
-      'IMAGE_GENERATION': 300
+      'VK_POST': 200,        // Уменьшили с 500 до 200
+      'TELEGRAM_POST': 400,  // Уменьшили с 800 до 400
+      'EMAIL_CAMPAIGN': 800, // Уменьшили с 1500 до 800
+      'BLOG_ARTICLE': 2000,  // Уменьшили с 3000 до 2000
+      'VIDEO_SCRIPT': 1000,  // Уменьшили с 2000 до 1000
+      'IMAGE_GENERATION': 200 // Уменьшили с 300 до 200
     }
 
-    return tokenLimits[templateType as keyof typeof tokenLimits] || 1000
+    return tokenLimits[templateType as keyof typeof tokenLimits] || 500
   }
 
   // Метод для проверки доступности API
