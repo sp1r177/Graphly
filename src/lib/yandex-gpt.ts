@@ -133,8 +133,8 @@ export class YandexGPTService {
       })
 
       const result = response.data.result
-      const generatedText = result.alternatives[0]?.message?.text || ''
-      const tokensUsed = parseInt(result.usage.totalTokens) || 0
+      const generatedText = result.alternatives?.[0]?.message?.text || ''
+      const tokensUsed = parseInt(result.usage?.totalTokens) || 0
 
       console.log('Generated content:', {
         textLength: generatedText.length,
@@ -244,9 +244,10 @@ export class YandexGPTService {
             throw new Error(`Operation failed: ${operation.error.message}`)
           }
 
-          const result = operation.response?.result
+          // Yandex возвращает данные напрямую в response, а не в response.result
+          const result = operation.response
           if (!result) {
-            throw new Error('Operation completed but no result in response')
+            throw new Error('Operation completed but no response')
           }
 
           const generatedText = result.alternatives?.[0]?.message?.text || ''

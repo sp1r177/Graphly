@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { yandexGPT } from '@/lib/yandex-gpt'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const isHealthy = await yandexGPT.checkHealth()
