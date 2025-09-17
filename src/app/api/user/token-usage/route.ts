@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate limits based on subscription
     const limits = {
-      daily: user.subscription_status === 'FREE' ? 10 : -1,
+      daily: user.subscription_status === 'FREE' ? 25 : -1,
       monthly: user.subscription_status === 'PRO' ? 100 : -1
     }
 

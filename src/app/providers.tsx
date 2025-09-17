@@ -86,7 +86,7 @@ const translations = {
     // Pricing
     'pricing.free.title': 'Free',
     'pricing.free.price': '$0',
-    'pricing.free.features': '10 generations per day',
+    'pricing.free.features': '25 generations per day',
     'pricing.pro.title': 'Pro',
     'pricing.pro.price': '$14/month',
     'pricing.pro.features': 'Unlimited generations',

@@ -65,7 +65,7 @@ export default function DashboardPage() {
     if (!prompt.trim()) return
 
     // Check usage limits
-    if (user?.subscriptionStatus === 'FREE' && user?.usageCountDay >= 10) {
+    if (user?.subscriptionStatus === 'FREE' && user?.usageCountDay >= 25) {
       alert('Вы исчерпали дневной лимит бесплатных генераций. Перейдите на Pro для безлимитного доступа!')
       return
     }
@@ -227,7 +227,7 @@ export default function DashboardPage() {
                 {/* Generate Button */}
                 <Button
                   onClick={handleGenerate}
-                  disabled={isLoading || isAuthLoading || !prompt.trim() || (user?.subscriptionStatus === 'FREE' && (user?.usageCountDay || 0) >= 10)}
+                  disabled={isLoading || isAuthLoading || !prompt.trim() || (user?.subscriptionStatus === 'FREE' && (user?.usageCountDay || 0) >= 25)}
                   variant="primary"
                   className="w-full"
                 >

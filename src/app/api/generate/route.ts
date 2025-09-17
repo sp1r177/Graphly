@@ -76,18 +76,6 @@ export async function POST(request: NextRequest) {
 
     console.log('User profile:', user ? { id: user.id, subscription: user.subscription_status, usage: user.usage_count_day } : 'NULL')
 
-    // Триал: всего 10 генераций
-    if (user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 30) {
-        return NextResponse.json(
-        {
-          error: 'Trial limit reached. Upgrade to Pro for unlimited generations.',
-          code: 'LIMIT_REACHED',
-          remainingTokens: { daily: 30, monthly: -1 }
-        },
-          { status: 429 }
-        )
-    }
-
     // Generate content using Yandex GPT
     let generatedText: string
     let tokensUsed: number = 0
@@ -124,6 +112,19 @@ export async function POST(request: NextRequest) {
       console.warn('YANDEX_API_KEY or YANDEX_FOLDER_ID missing → using fallback generation')
       generatedText = await generateContent(prompt, templateType)
       tokensUsed = 100
+    }
+    
+    // Проверяем лимит ПОСЛЕ генерации, но ПЕРЕД сохранением
+    if (user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 25) {
+      console.log('User exceeded limit, returning error without saving')
+      return NextResponse.json(
+        {
+          error: 'Trial limit reached. Upgrade to Pro for unlimited generations.',
+          code: 'LIMIT_REACHED',
+          remainingTokens: { daily: 0, monthly: -1 }
+        },
+        { status: 429 }
+      )
     }
     
     // Сохраняем и инкрементим (через admin)
@@ -176,11 +177,11 @@ export async function POST(request: NextRequest) {
       tokensUsed,
       remainingTokens: {
         daily: user.subscription_status === 'FREE'
-          ? Math.max(0, 10 - (user.usage_count_day || 0))
+          ? Math.max(0, 25 - (user.usage_count_day || 0))
           : -1,
         monthly: -1
       },
-      upsell: user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 10
+      upsell: user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 25
     }
     
     console.log('=== GENERATE API SUCCESS ===')
