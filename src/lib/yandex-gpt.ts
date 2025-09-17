@@ -232,15 +232,32 @@ export class YandexGPTService {
         )
 
         const operation = response.data
+        console.log(`Async operation ${operationId} attempt ${attempt + 1}:`, {
+          done: operation.done,
+          hasError: !!operation.error,
+          hasResponse: !!operation.response,
+          responseKeys: operation.response ? Object.keys(operation.response) : []
+        })
 
         if (operation.done) {
           if (operation.error) {
             throw new Error(`Operation failed: ${operation.error.message}`)
           }
 
-          const result = operation.response.result
-          const generatedText = result.alternatives[0]?.message?.text || ''
-          const tokensUsed = parseInt(result.usage.totalTokens) || 0
+          const result = operation.response?.result
+          if (!result) {
+            throw new Error('Operation completed but no result in response')
+          }
+
+          const generatedText = result.alternatives?.[0]?.message?.text || ''
+          const tokensUsed = parseInt(result.usage?.totalTokens) || 0
+
+          console.log('Async operation completed:', {
+            hasAlternatives: !!result.alternatives,
+            alternativesCount: result.alternatives?.length || 0,
+            textLength: generatedText.length,
+            tokensUsed
+          })
 
           return {
             text: generatedText,
@@ -254,7 +271,11 @@ export class YandexGPTService {
         if (attempt === maxAttempts - 1) {
           throw error
         }
-        console.warn(`Attempt ${attempt + 1} failed, retrying...`, error)
+        console.warn(`Attempt ${attempt + 1} failed, retrying...`, {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          status: (error as any)?.response?.status || null,
+          data: (error as any)?.response?.data || null
+        })
         await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
