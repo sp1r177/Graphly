@@ -95,6 +95,11 @@ export async function POST(request: NextRequest) {
     // Check if Yandex GPT is configured
     const yandexApiKey = process.env.YANDEX_API_KEY || process.env.YANDEX_GPT_API_KEY
     const yandexFolderId = process.env.YANDEX_FOLDER_ID || process.env.YANDEX_GPT_FOLDER_ID
+    console.log('Yandex GPT env check:', {
+      hasApiKey: !!yandexApiKey,
+      hasFolderId: !!yandexFolderId,
+      model: process.env.YANDEX_GPT_MODEL || 'yandexgpt/latest'
+    })
 
     // Пытаемся сгенерировать через Yandex GPT, при ошибке используем fallback
     if (yandexApiKey && yandexFolderId) {

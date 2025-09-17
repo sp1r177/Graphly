@@ -187,7 +187,7 @@ export class YandexGPTService {
 
     try {
       // 1. Отправляем асинхронный запрос
-      const response = await axios.post<{ operationId: string }>(
+      const response = await axios.post<any>(
         this.baseUrl,
         requestData,
         {
@@ -198,7 +198,10 @@ export class YandexGPTService {
         }
       )
 
-      const operationId = response.data.operationId
+      const operationId = (response.data && (response.data.operationId || response.data.id)) as string
+      if (!operationId) {
+        throw new Error('Async API did not return operation id')
+      }
 
       // 2. Ожидаем завершения операции
       return await this.waitForAsyncCompletion(operationId)
