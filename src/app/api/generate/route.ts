@@ -77,12 +77,12 @@ export async function POST(request: NextRequest) {
     console.log('User profile:', user ? { id: user.id, subscription: user.subscription_status, usage: user.usage_count_day } : 'NULL')
 
     // Триал: всего 10 генераций
-    if (user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 20) {
+    if (user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 30) {
         return NextResponse.json(
         {
           error: 'Trial limit reached. Upgrade to Pro for unlimited generations.',
           code: 'LIMIT_REACHED',
-          remainingTokens: { daily: 0, monthly: -1 }
+          remainingTokens: { daily: 30, monthly: -1 }
         },
           { status: 429 }
         )
@@ -106,13 +106,6 @@ export async function POST(request: NextRequest) {
       try {
         console.log('Starting Yandex GPT generation:', { prompt, templateType })
         const result = await yandexGPT.generateContent(prompt, templateType)
-        console.log('Yandex GPT raw result:', { 
-          hasText: !!result.text, 
-          textLength: result.text?.length || 0,
-          tokensUsed: result.tokensUsed,
-          textPreview: result.text?.substring(0, 100) || 'NO_TEXT'
-        })
-        
         generatedText = (result.text && result.text.trim().length > 0)
           ? result.text
           : await generateContent(prompt, templateType)
@@ -121,8 +114,6 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error('Yandex GPT generation failed, using fallback:', {
           error: error instanceof Error ? error.message : 'Unknown error',
-          status: (error as any)?.response?.status || null,
-          data: (error as any)?.response?.data || null,
           prompt,
           templateType
         })
