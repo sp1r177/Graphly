@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     console.log('User profile:', user ? { id: user.id, subscription: user.subscription_status, usage: user.usage_count_day } : 'NULL')
 
     // Триал: всего 10 генераций
-    if (user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 10) {
+    if (user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 20) {
         return NextResponse.json(
         {
           error: 'Trial limit reached. Upgrade to Pro for unlimited generations.',
