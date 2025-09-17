@@ -70,9 +70,19 @@ export class YandexGPTService {
   ): Promise<{ text: string; tokensUsed: number }> {
     this.validateConfig()
 
+    console.log('=== YANDEX GPT GENERATION START ===')
+    console.log('Mode selection:', {
+      useAsyncMode: this.useAsyncMode,
+      envAsyncMode: process.env.YANDEX_GPT_ASYNC_MODE,
+      selectedMode: this.useAsyncMode ? 'ASYNC' : 'SYNC',
+      baseUrl: this.baseUrl
+    })
+
     if (this.useAsyncMode) {
+      console.log('Using ASYNC mode')
       return this.generateContentAsync(prompt, templateType, systemPrompt)
     } else {
+      console.log('Using SYNC mode')
       return this.generateContentSync(prompt, templateType, systemPrompt)
     }
   }
@@ -85,6 +95,13 @@ export class YandexGPTService {
     const modelName = process.env.YANDEX_GPT_MODEL || 'yandexgpt/latest'
     const modelUri = `gpt://${this.folderId}/${modelName}`
     
+    console.log('Yandex GPT Model Configuration (Sync):', {
+      envModel: process.env.YANDEX_GPT_MODEL,
+      finalModelName: modelName,
+      folderId: this.folderId,
+      modelUri: modelUri
+    })
+    
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; text: string }> = []
     
     // Добавляем системный промпт для конкретного типа контента
@@ -107,52 +124,68 @@ export class YandexGPTService {
       messages
     }
 
-    try {
-      console.log('Sending request to Yandex GPT Sync API:', {
-        url: this.baseUrl,
-        modelUri: requestData.modelUri,
-        messagesCount: requestData.messages.length
-      })
+    const maxRetries = 3
+    let lastError: any = null
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Sending request to Yandex GPT Sync API (attempt ${attempt}/${maxRetries}):`, {
+          url: this.baseUrl,
+          modelUri: requestData.modelUri,
+          messagesCount: requestData.messages.length
+        })
 
-      const response = await axios.post<YandexGPTResponse>(
-        this.baseUrl,
-        requestData,
-        {
-          headers: {
-            'Authorization': `Api-Key ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 30000 // 30 секунд таймаут
+        const response = await axios.post<YandexGPTResponse>(
+          this.baseUrl,
+          requestData,
+          {
+            headers: {
+              'Authorization': `Api-Key ${this.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 60000 // 60 секунд таймаут
+          }
+        )
+
+        console.log('Yandex GPT Sync API response:', {
+          status: response.status,
+          hasResult: !!response.data.result,
+          alternativesCount: response.data.result?.alternatives?.length || 0
+        })
+
+        const result = response.data.result
+        const generatedText = result.alternatives?.[0]?.message?.text || ''
+        const tokensUsed = parseInt(result.usage?.totalTokens) || 0
+
+        console.log('Generated content:', {
+          textLength: generatedText.length,
+          tokensUsed
+        })
+
+        return {
+          text: generatedText,
+          tokensUsed
         }
-      )
-
-      console.log('Yandex GPT Sync API response:', {
-        status: response.status,
-        hasResult: !!response.data.result,
-        alternativesCount: response.data.result?.alternatives?.length || 0
-      })
-
-      const result = response.data.result
-      const generatedText = result.alternatives?.[0]?.message?.text || ''
-      const tokensUsed = parseInt(result.usage?.totalTokens) || 0
-
-      console.log('Generated content:', {
-        textLength: generatedText.length,
-        tokensUsed
-      })
-
-      return {
-        text: generatedText,
-        tokensUsed
+      } catch (error) {
+        lastError = error
+        console.error(`Yandex GPT Sync API error (attempt ${attempt}/${maxRetries}):`, {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          status: (error as any)?.response?.status || null,
+          data: (error as any)?.response?.data || null,
+          code: (error as any)?.code
+        })
+        
+        // Если это не последняя попытка, ждём перед повтором
+        if (attempt < maxRetries) {
+          const delay = attempt * 2000 // 2, 4, 6 секунд
+          console.log(`Retrying in ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
       }
-    } catch (error) {
-      console.error('Yandex GPT Sync API error:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: (error as any)?.response?.status || null,
-        data: (error as any)?.response?.data || null
-      })
-      throw new Error(`Failed to generate content with Yandex GPT (Sync): ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
+    
+    // Если все попытки неудачны, выбрасываем последнюю ошибку
+    throw new Error(`Failed to generate content with Yandex GPT (Sync) after ${maxRetries} attempts: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`)
   }
 
   private async generateContentAsync(
@@ -163,6 +196,13 @@ export class YandexGPTService {
     const modelName = process.env.YANDEX_GPT_MODEL || 'yandexgpt/latest'
     const modelUri = `gpt://${this.folderId}/${modelName}`
     
+    console.log('Yandex GPT Model Configuration (Async):', {
+      envModel: process.env.YANDEX_GPT_MODEL,
+      finalModelName: modelName,
+      folderId: this.folderId,
+      modelUri: modelUri
+    })
+    
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; text: string }> = []
     
     // Добавляем системный промпт для конкретного типа контента
@@ -185,34 +225,57 @@ export class YandexGPTService {
       messages
     }
 
-    try {
-      // 1. Отправляем асинхронный запрос
-      const response = await axios.post<any>(
-        this.baseUrl,
-        requestData,
-        {
-          headers: {
-            'Authorization': `Api-Key ${this.apiKey}`,
-            'Content-Type': 'application/json'
+    const maxRetries = 3
+    let lastError: any = null
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Sending async request to Yandex GPT (attempt ${attempt}/${maxRetries}):`, {
+          url: this.baseUrl,
+          modelUri: requestData.modelUri,
+          messagesCount: requestData.messages.length
+        })
+        
+        // 1. Отправляем асинхронный запрос
+        const response = await axios.post<any>(
+          this.baseUrl,
+          requestData,
+          {
+            headers: {
+              'Authorization': `Api-Key ${this.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 30000 // 30 секунд для async запроса
           }
+        )
+
+        const operationId = (response.data && (response.data.operationId || response.data.id)) as string
+        if (!operationId) {
+          throw new Error('Async API did not return operation id')
         }
-      )
 
-      const operationId = (response.data && (response.data.operationId || response.data.id)) as string
-      if (!operationId) {
-        throw new Error('Async API did not return operation id')
+        // 2. Ожидаем завершения операции
+        return await this.waitForAsyncCompletion(operationId)
+      } catch (error) {
+        lastError = error
+        console.error(`Yandex GPT Async API error (attempt ${attempt}/${maxRetries}):`, {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          status: (error as any)?.response?.status || null,
+          data: (error as any)?.response?.data || null,
+          code: (error as any)?.code
+        })
+        
+        // Если это не последняя попытка, ждём перед повтором
+        if (attempt < maxRetries) {
+          const delay = attempt * 2000 // 2, 4, 6 секунд
+          console.log(`Retrying async request in ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
       }
-
-      // 2. Ожидаем завершения операции
-      return await this.waitForAsyncCompletion(operationId)
-    } catch (error) {
-      console.error('Yandex GPT Async API error:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: (error as any)?.response?.status || null,
-        data: (error as any)?.response?.data || null
-      })
-      throw new Error(`Failed to generate content with Yandex GPT (Async): ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
+    
+    // Если все попытки неудачны, выбрасываем последнюю ошибку
+    throw new Error(`Failed to generate content with Yandex GPT (Async) after ${maxRetries} attempts: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`)
   }
 
   private async waitForAsyncCompletion(operationId: string): Promise<{ text: string; tokensUsed: number }> {
