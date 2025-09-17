@@ -2,11 +2,36 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getUserProfile, createUserProfile } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== VK AUTH START ===')
+    
+    // Проверяем переменные окружения VK
+    const vkClientId = process.env.VK_CLIENT_ID
+    const vkClientSecret = process.env.VK_CLIENT_SECRET
+    const vkRedirectUri = process.env.VK_REDIRECT_URI
+    
+    console.log('VK env check:', {
+      hasClientId: !!vkClientId,
+      hasClientSecret: !!vkClientSecret,
+      hasRedirectUri: !!vkRedirectUri
+    })
+    
+    if (!vkClientId || !vkClientSecret || !vkRedirectUri) {
+      console.error('VK environment variables missing')
+      return NextResponse.json(
+        { error: 'VK authentication not configured' },
+        { status: 500 }
+      )
+    }
+    
     const { code, state } = await request.json()
+    console.log('VK auth request:', { hasCode: !!code, hasState: !!state })
 
     if (!code) {
+      console.log('VK auth error: No authorization code')
       return NextResponse.json(
         { error: 'Authorization code is required' },
         { status: 400 }
@@ -20,14 +45,20 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: process.env.VK_CLIENT_ID!,
-        client_secret: process.env.VK_CLIENT_SECRET!,
-        redirect_uri: process.env.VK_REDIRECT_URI!,
+        client_id: vkClientId,
+        client_secret: vkClientSecret,
+        redirect_uri: vkRedirectUri,
         code,
       }),
     })
 
     const tokenData = await vkTokenResponse.json()
+    console.log('VK token response:', { 
+      status: vkTokenResponse.status, 
+      hasAccessToken: !!tokenData.access_token,
+      hasEmail: !!tokenData.email,
+      error: tokenData.error
+    })
 
     if (!tokenData.access_token) {
       console.error('VK token error:', tokenData)
@@ -43,8 +74,15 @@ export async function POST(request: NextRequest) {
     )
     
     const userInfoData = await userInfoResponse.json()
+    console.log('VK user info response:', { 
+      status: userInfoResponse.status,
+      hasResponse: !!userInfoData.response,
+      responseLength: userInfoData.response?.length || 0,
+      error: userInfoData.error
+    })
 
     if (!userInfoData.response || userInfoData.response.length === 0) {
+      console.error('VK user info error:', userInfoData)
       return NextResponse.json(
         { error: 'Failed to get VK user info' },
         { status: 400 }
@@ -54,6 +92,12 @@ export async function POST(request: NextRequest) {
     const vkUser = userInfoData.response[0]
     const vkUserId = vkUser.id.toString()
     const email = tokenData.email || `${vkUserId}@vk.id`
+    console.log('VK user data:', { 
+      vkUserId, 
+      email, 
+      name: `${vkUser.first_name} ${vkUser.last_name}`,
+      hasPhoto: !!vkUser.photo_200
+    })
 
     // Создаем или получаем Supabase клиент
     const supabaseUrl = process.env.SUPABASE_URL
@@ -133,6 +177,12 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    console.log('VK auth success:', {
+      userId: supabaseUser.id,
+      email: supabaseUser.email,
+      subscriptionStatus: userProfile?.subscription_status || 'FREE'
+    })
 
     const response = NextResponse.json({
       message: 'VK authentication successful',
