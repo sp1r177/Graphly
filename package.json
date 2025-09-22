@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "DISABLE_ESLINT_PLUGIN=true next build",
+    "build": "npx prisma generate || echo 'Prisma generate failed, continuing...' && DISABLE_ESLINT_PLUGIN=true next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "next": "14.0.0",
@@ -25,15 +26,15 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "tailwind-merge": "^1.14.0",
+    "prisma": "^5.5.2",
+    "@prisma/client": "^5.5.2",
     "bcryptjs": "^2.4.3",
     "@types/bcryptjs": "^2.4.4",
     "jsonwebtoken": "^9.0.2",
     "@types/jsonwebtoken": "^9.0.4",
     "next-auth": "^4.24.5",
     "react-i18next": "^13.3.1",
-    "i18next": "^23.6.0",
-    "@supabase/supabase-js": "^2.38.0",
-    "axios": "^1.6.0"
+    "i18next": "^23.6.0"
   },
   "devDependencies": {
     "@types/node": "^20.8.0",

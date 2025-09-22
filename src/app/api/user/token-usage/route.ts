@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
-import { supabase, getUserProfile } from '@/lib/supabase'
+import { getUserById, getUserLimits } from '@/lib/user'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const user = await getUserProfile(authUser.id)
+    const user = await getUserById(authUser.id)
 
     if (!user) {
       return NextResponse.json(
@@ -22,64 +23,50 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database not configured' },
-        { status: 500 }
-      )
-    }
-
     // Get recent generations for detailed stats
-    const { data: recentGenerations, error: generationsError } = await supabase
-      .from('generations')
-      .select(`
-        id,
-        template_type,
-        tokens_used,
-        created_at
-      `)
-      .eq('user_id', authUser.id)
-      .order('created_at', { ascending: false })
-      .limit(10)
+    const recentGenerations = await prisma.generation.findMany({
+      where: { userId: authUser.id },
+      select: {
+        id: true,
+        templateType: true,
+        tokensUsed: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    })
 
-    if (generationsError) {
-      console.error('Error fetching recent generations:', generationsError)
-    }
-
-    // Calculate limits based on subscription
-    const limits = {
-      daily: user.subscription_status === 'FREE' ? 25 : -1,
-      monthly: user.subscription_status === 'PRO' ? 100 : -1
-    }
+    // Get user limits
+    const limits = await getUserLimits(authUser.id)
 
     const usage = {
       daily: {
-        generations: user.usage_count_day,
+        generations: limits.used,
         tokens: 0, // We'll implement token tracking later
         limit: limits.daily,
-        remaining: limits.daily > 0 ? Math.max(0, limits.daily - user.usage_count_day) : -1
+        remaining: limits.remaining
       },
       monthly: {
-        generations: user.usage_count_month,
+        generations: limits.used,
         tokens: 0, // We'll implement token tracking later
         limit: limits.monthly,
-        remaining: limits.monthly > 0 ? Math.max(0, limits.monthly - user.usage_count_month) : -1
+        remaining: limits.monthly > 0 ? Math.max(0, limits.monthly - limits.used) : -1
       }
     }
 
     // Format recent generations
-    const formattedGenerations = recentGenerations?.map(gen => ({
+    const formattedGenerations = recentGenerations.map(gen => ({
       id: gen.id,
-      templateType: gen.template_type,
-      tokensUsed: gen.tokens_used,
-      timestamp: gen.created_at
-    })) || []
+      templateType: gen.templateType,
+      tokensUsed: gen.tokensUsed,
+      timestamp: gen.createdAt
+    }))
 
     return NextResponse.json({
-      subscription: user.subscription_status,
+      subscription: user.plan?.name || 'FREE',
       usage,
       recentGenerations: formattedGenerations,
-      lastGeneration: null // We'll implement this later
+      lastGeneration: formattedGenerations[0] || null
     })
 
   } catch (error) {

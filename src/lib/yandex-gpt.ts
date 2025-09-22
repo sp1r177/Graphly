@@ -132,7 +132,8 @@ export class YandexGPTService {
         console.log(`Sending request to Yandex GPT Sync API (attempt ${attempt}/${maxRetries}):`, {
           url: this.baseUrl,
           modelUri: requestData.modelUri,
-          messagesCount: requestData.messages.length
+          messagesCount: requestData.messages.length,
+          maxTokens: requestData.completionOptions.maxTokens
         })
 
         const response = await axios.post<YandexGPTResponse>(
@@ -233,7 +234,8 @@ export class YandexGPTService {
         console.log(`Sending async request to Yandex GPT (attempt ${attempt}/${maxRetries}):`, {
           url: this.baseUrl,
           modelUri: requestData.modelUri,
-          messagesCount: requestData.messages.length
+          messagesCount: requestData.messages.length,
+          maxTokens: requestData.completionOptions.maxTokens
         })
         
         // 1. Отправляем асинхронный запрос

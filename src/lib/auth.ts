@@ -1,117 +1,53 @@
-import { supabase, createUserProfile, getUserProfile } from './supabase'
 import { NextRequest } from 'next/server'
+import { createOrGetUser, getUserById, getUserByVkId } from './user'
+import jwt from 'jsonwebtoken'
 
-// Регистрация пользователя
-export async function signUp(email: string, password: string, name?: string, redirectTo?: string) {
-  if (!supabase) {
-    throw new Error('Supabase не настроен. Обратитесь к администратору.')
-  }
+// VK ID авторизация
+export async function authenticateWithVK(vkId: string, email?: string, name?: string) {
+  try {
+    const user = await createOrGetUser(vkId, email, name)
+    
+    // Создаем JWT токен
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        vkId: user.vk_id,
+        email: user.email 
+      },
+      process.env.NEXTAUTH_SECRET!,
+      { expiresIn: '7d' }
+    )
 
-  const emailRedirectTo = (redirectTo || `${process.env.SITE_URL || 'http://localhost:3000'}/auth/callback`).replace(/\/$/, '')
-
-  // Стандартная регистрация с подтверждением email (Supabase отправляет письмо)
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo,
-      data: { name: name || '' },
+    return {
+      user: {
+        id: user.id,
+        vk_id: user.vk_id,
+        email: user.email,
+        name: user.name,
+        plan: user.plan?.name || 'FREE'
+      },
+      token
     }
-  })
-
-  if (error) throw error
-
-  // Если пользователь уже подтвержден и вернулась сессия — создаем профиль
-  if (data.user && data.session) {
-    try {
-      await createUserProfile(data.user.id, email, name)
-    } catch (profileError) {
-      console.error('Error creating user profile:', profileError)
-    }
-    return { user: data.user, session: data.session, needsEmailConfirmation: false }
-  }
-
-  // В обычном случае письма — сессии нет, требуется подтверждение email
-  return { user: data.user, session: data.session, needsEmailConfirmation: true }
-}
-
-// Вход пользователя
-export async function signIn(email: string, password: string) {
-  if (!supabase) {
-    throw new Error('Supabase не настроен. Обратитесь к администратору.')
-  }
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  })
-
-  if (error) throw error
-
-  return {
-    user: data.user,
-    session: data.session
+  } catch (error) {
+    console.error('VK authentication error:', error)
+    throw new Error('Authentication failed')
   }
 }
 
-// Выход пользователя
-export async function signOut() {
-  if (!supabase) {
-    throw new Error('Supabase не настроен. Обратитесь к администратору.')
+// Получение пользователя из JWT токена
+export async function getUserFromToken(token: string) {
+  try {
+    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET!) as any
+    const user = await getUserById(decoded.userId)
+    return user
+  } catch (error) {
+    console.error('Token verification error:', error)
+    return null
   }
-  const { error } = await supabase.auth.signOut()
-  if (error) throw error
-}
-
-// Получение текущего пользователя
-export async function getCurrentUser() {
-  if (!supabase) {
-    throw new Error('Supabase не настроен. Обратитесь к администратору.')
-  }
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error) throw error
-  return user
-}
-
-// Получение сессии
-export async function getSession() {
-  if (!supabase) {
-    throw new Error('Supabase не настроен. Обратитесь к администратору.')
-  }
-  const { data: { session }, error } = await supabase.auth.getSession()
-  if (error) throw error
-  return session
-}
-
-// Сброс пароля
-export async function resetPassword(email: string) {
-  if (!supabase) {
-    throw new Error('Supabase не настроен. Обратитесь к администратору.')
-  }
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.SITE_URL || 'http://localhost:3000'}/auth/reset-password`
-  })
-  if (error) throw error
-}
-
-// Обновление пароля
-export async function updatePassword(newPassword: string) {
-  if (!supabase) {
-    throw new Error('Supabase не настроен. Обратитесь к администратору.')
-  }
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword
-  })
-  if (error) throw error
 }
 
 // Получение пользователя из запроса (для API роутов)
 export async function getUserFromRequest(request: NextRequest) {
-  if (!supabase) {
-    console.warn('Supabase не настроен, возвращаем null для пользователя')
-    return null
-  }
-
   const authHeader = request.headers.get('authorization')
   let token = authHeader?.replace('Bearer ', '') || undefined
 
@@ -120,7 +56,7 @@ export async function getUserFromRequest(request: NextRequest) {
 
   // Пытаемся прочитать токен из куки, если заголовка нет
   if (!token) {
-    const cookieToken = request.cookies.get('sb-access-token')?.value
+    const cookieToken = request.cookies.get('graphly-auth-token')?.value
     console.log('Token from cookie:', cookieToken)
     token = cookieToken
   }
@@ -139,7 +75,7 @@ export async function getUserFromRequest(request: NextRequest) {
     
     try {
       console.log('Attempting to get profile for fallback user:', fallbackUserId)
-      const profile = await getUserProfile(fallbackUserId)
+      const profile = await getUserById(fallbackUserId)
       console.log('Profile lookup result:', profile ? 'FOUND' : 'NOT_FOUND')
       
       if (!profile) {
@@ -162,17 +98,17 @@ export async function getUserFromRequest(request: NextRequest) {
   console.log('Using token:', token.substring(0, 20) + '...')
 
   try {
-    const { data: { user }, error } = await supabase.auth.getUser(token)
-    if (error) {
-      console.error('Error getting user from token:', error)
-      return null
-    }
+    const user = await getUserFromToken(token)
     if (!user) {
       console.log('No user found for token')
       return null
     }
     console.log('User found:', user.id, user.email)
-    return user
+    return {
+      id: user.id,
+      email: user.email,
+      user_metadata: { name: user.name },
+    } as any
   } catch (error) {
     console.error('Exception getting user from token:', error)
     return null

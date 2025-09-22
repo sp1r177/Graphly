@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { prisma } from '@/lib/prisma'
+import { resetUserUsage } from '@/lib/user'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,53 +11,51 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json()
     
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database not configured' },
-        { status: 500 }
-      )
-    }
-
     // Handle different webhook events
     switch (body.event) {
       case 'payment.succeeded':
         // Update payment status
-        await supabase
-          .from('payments')
-          .update({ status: 'COMPLETED' })
-          .eq('yandex_payment_id', body.object.id)
+        await prisma.payment.update({
+          where: { yandexPaymentId: body.object.id },
+          data: { status: 'COMPLETED' }
+        })
         
-        // Update user subscription
-        const { data: payment } = await supabase
-          .from('payments')
-          .select('user_id, subscription_type')
-          .eq('yandex_payment_id', body.object.id)
-          .single()
+        // Update user subscription and reset usage
+        const payment = await prisma.payment.findUnique({
+          where: { yandexPaymentId: body.object.id },
+          select: { userId: true, subscriptionType: true }
+        })
         
-        if (payment) {
-          await supabase
-            .from('user_profiles')
-            .update({
-              subscription_status: payment.subscription_type,
-              usage_count_day: 0,
-              usage_count_month: 0,
+        if (payment && payment.subscriptionType) {
+          // Находим план по названию
+          const plan = await prisma.plan.findFirst({
+            where: { name: payment.subscriptionType }
+          })
+          
+          if (plan) {
+            await prisma.user.update({
+              where: { id: payment.userId },
+              data: { planId: plan.id }
             })
-            .eq('id', payment.user_id)
+            
+            // Сбрасываем счетчик использований
+            await resetUserUsage(payment.userId)
+          }
         }
         break
         
       case 'payment.cancelled':
-        await supabase
-          .from('payments')
-          .update({ status: 'CANCELLED' })
-          .eq('yandex_payment_id', body.object.id)
+        await prisma.payment.update({
+          where: { yandexPaymentId: body.object.id },
+          data: { status: 'CANCELLED' }
+        })
         break
         
       case 'payment.failed':
-        await supabase
-          .from('payments')
-          .update({ status: 'FAILED' })
-          .eq('yandex_payment_id', body.object.id)
+        await prisma.payment.update({
+          where: { yandexPaymentId: body.object.id },
+          data: { status: 'FAILED' }
+        })
         break
     }
     

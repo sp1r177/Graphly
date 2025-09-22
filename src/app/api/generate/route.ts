@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
-import { supabase, getUserProfile, updateUserProfile } from '@/lib/supabase'
+import { getUserById, getUserLimits, incrementUserUsage } from '@/lib/user'
 import { yandexGPT } from '@/lib/yandex-gpt'
-import { createClient } from '@supabase/supabase-js'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
     console.log('=== GENERATE API START ===')
-    console.log('Cookies:', request.cookies.getAll().map(c => ({ name: c.name, hasValue: !!c.value })))
+    console.log('Cookies:', request.cookies.getAll().map((c: any) => ({ name: c.name, hasValue: !!c.value })))
     console.log('Auth header:', request.headers.get('authorization') ? 'SET' : 'NOT_SET')
 
     const { prompt, templateType } = await request.json()
@@ -22,59 +22,46 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Простая проверка авторизации через graphly-user-id куку
-    const userId = request.cookies.get('graphly-user-id')?.value
-    console.log('User ID from cookie:', userId)
+    // Получаем пользователя из запроса
+    const authUser = await getUserFromRequest(request)
+    console.log('Auth user:', authUser ? { id: authUser.id, email: authUser.email } : 'NULL')
     
-    if (!userId) {
-      console.log('=== GENERATE API: NO USER ID IN COOKIE ===')
+    if (!authUser) {
+      console.log('=== GENERATE API: NO AUTH USER ===')
       return NextResponse.json(
         { error: 'Unauthorized', code: 'NOT_AUTHENTICATED' },
         { status: 401 }
       )
     }
 
-    // Создаем admin-клиент для работы с профилем и генерациями (обходит RLS)
-    const supabaseUrl = process.env.SUPABASE_URL as string
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
-    const admin = (supabaseUrl && serviceKey) ? createClient(supabaseUrl, serviceKey) : null
-    if (!admin) {
-      console.error('Supabase admin client is not configured')
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
-    }
-
-    // Получаем или создаем профиль пользователя
-    let { data: user, error: userSelectError } = await admin
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (userSelectError && userSelectError.code !== 'PGRST116') {
-      console.error('Error selecting user profile (admin):', userSelectError)
-    }
-
+    // Получаем профиль пользователя
+    const user = await getUserById(authUser.id)
     if (!user) {
-      const upsertPayload = {
-        id: userId,
-        email: `${userId}@vk.id`,
-        subscription_status: 'FREE',
-        usage_count_day: 0,
-        usage_count_month: 0,
-      }
-      const { data: created, error: createErr } = await admin
-        .from('user_profiles')
-        .upsert(upsertPayload)
-        .select('*')
-        .single()
-      if (createErr) {
-        console.error('Error creating user profile (admin):', createErr)
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
-      }
-      user = created as any
+      console.error('User profile not found for ID:', authUser.id)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    console.log('User profile:', user ? { id: user.id, subscription: user.subscription_status, usage: user.usage_count_day } : 'NULL')
+    console.log('User profile:', { 
+      id: user.id, 
+      plan: user.plan?.name || 'FREE', 
+      usage: user.usages[0]?.used || 0 
+    })
+
+    // Проверяем лимиты ПЕРЕД генерацией
+    const limits = await getUserLimits(user.id)
+    console.log('User limits:', limits)
+    
+    if (limits.remaining <= 0) {
+      console.log('User exceeded limit, returning error')
+      return NextResponse.json(
+        {
+          error: 'Trial limit reached. Upgrade to Pro for unlimited generations.',
+          code: 'LIMIT_REACHED',
+          remainingTokens: { daily: 0, monthly: -1 }
+        },
+        { status: 429 }
+      )
+    }
 
     // Generate content using Yandex GPT
     let generatedText: string
@@ -114,74 +101,43 @@ export async function POST(request: NextRequest) {
       tokensUsed = 100
     }
     
-    // Проверяем лимит ПОСЛЕ генерации, но ПЕРЕД сохранением
-    if (user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 25) {
-      console.log('User exceeded limit, returning error without saving')
-      return NextResponse.json(
-        {
-          error: 'Trial limit reached. Upgrade to Pro for unlimited generations.',
-          code: 'LIMIT_REACHED',
-          remainingTokens: { daily: 0, monthly: -1 }
-        },
-        { status: 429 }
-      )
-    }
-    
-    // Сохраняем и инкрементим (через admin)
+    // Сохраняем генерацию и увеличиваем счетчик
     let generation = null
     try {
       console.log('Saving generation to database for user:', user.id)
-      const { data: genData, error: generationError } = await admin
-        .from('generations')
-        .insert({
-          user_id: user.id,
-        prompt,
-          output_text: generatedText,
-          template_type: templateType,
-          tokens_used: tokensUsed,
-        })
-        .select()
-        .single()
+      generation = await prisma.generation.create({
+        data: {
+          userId: user.id,
+          prompt,
+          outputText: generatedText,
+          templateType,
+          tokensUsed,
+        }
+      })
+      console.log('Generation saved successfully:', generation.id)
 
-      if (!generationError) {
-        generation = genData
-        console.log('Generation saved successfully:', generation.id)
-      } else {
-        console.error('Error saving generation:', generationError)
-      }
-
-      // Для триала используем usage_count_day как "всего использовано"
-      const updatedDay = (user.usage_count_day || 0) + 1
-      console.log('Updating user usage count:', { old: user.usage_count_day, new: updatedDay })
-      
-      const { error: updErr } = await admin
-        .from('user_profiles')
-        .update({ usage_count_day: updatedDay })
-        .eq('id', user.id)
-      if (updErr) {
-        console.error('Error updating user usage (admin):', updErr)
-      } else {
-        user.usage_count_day = updatedDay
-        console.log('User usage count updated successfully')
-      }
+      // Увеличиваем счетчик использований
+      await incrementUserUsage(user.id)
+      console.log('User usage count incremented successfully')
     } catch (dbError) {
       console.error('Database error:', dbError)
       // НЕ прерываем выполнение, если база не работает
     }
 
+    // Получаем обновленные лимиты
+    const updatedLimits = await getUserLimits(user.id)
+
     const response = {
       id: generation?.id || 'temp-' + Date.now(),
       text: generatedText,
       templateType,
-      timestamp: generation?.created_at || new Date().toISOString(),
+      timestamp: generation?.createdAt || new Date().toISOString(),
       tokensUsed,
       remainingTokens: {
-        daily: user.subscription_status === 'FREE'
-          ? Math.max(0, 25 - (user.usage_count_day || 0))
-          : -1,
+        daily: updatedLimits.remaining,
         monthly: -1
       },
-      upsell: user.subscription_status === 'FREE' && (user.usage_count_day || 0) >= 25
+      upsell: updatedLimits.remaining <= 0
     }
     
     console.log('=== GENERATE API SUCCESS ===')
@@ -203,15 +159,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateContent(prompt: string, templateType: string): Promise<string> {
+async function generateContent(prompt: string, templateType: string | undefined): Promise<string> {
   // Simulate AI generation delay
   await new Promise(resolve => setTimeout(resolve, 2000))
   
   // Создаем умную генерацию на основе промпта
-  const generateSmartContent = (basePrompt: string, type: string) => {
+  const generateSmartContent = (basePrompt: string, type: string | undefined) => {
     // Извлекаем ключевые слова из промпта
-    const keywords = basePrompt.toLowerCase().split(' ').filter(word => 
-      word.length > 3 && !['напиши', 'создай', 'сделай', 'пост', 'статью', 'контент'].includes(word)
+    const keywords = (basePrompt || '').toLowerCase().split(' ').filter(word => 
+      word.length > 3 && !['напиши', 'создай', 'сделай', 'пост', 'статью', 'контент'].some(excludeWord => excludeWord === word)
     )
     
     // Создаем случайные варианты для разнообразия
@@ -229,14 +185,14 @@ async function generateContent(prompt: string, templateType: string): Promise<st
     switch (type) {
       case 'VK_POST':
         // Анализируем промпт и создаем соответствующий контент
-        const isCoffee = basePrompt.includes('кофейн') || basePrompt.includes('кофе')
-        const isKrasnodar = basePrompt.includes('краснодар')
-        const isSale = basePrompt.includes('акци') || basePrompt.includes('скидк')
-        const isLatte = basePrompt.includes('латте')
-        const isRestaurant = basePrompt.includes('ресторан') || basePrompt.includes('кафе')
+        const isCoffee = basePrompt?.includes('кофейн') || basePrompt?.includes('кофе')
+        const isKrasnodar = basePrompt?.includes('краснодар')
+        const isSale = basePrompt?.includes('акци') || basePrompt?.includes('скидк')
+        const isLatte = basePrompt?.includes('латте')
+        const isRestaurant = basePrompt?.includes('ресторан') || basePrompt?.includes('кафе')
         
         // Если промпт очень короткий, создаем более общий контент
-        const isShortPrompt = basePrompt.length < 20
+        const isShortPrompt = (basePrompt?.length || 0) < 20
         
         let businessType = 'Бизнес'
         let city = 'городе'
@@ -291,13 +247,13 @@ ${description}
 ${hashtags}`
 
       case 'TELEGRAM_POST':
-        return `📢 ${basePrompt.includes('кофейн') ? 'Кофейня' : 'Бизнес'} в ${basePrompt.includes('краснодар') ? 'Краснодаре' : 'городе'}
+        return `📢 ${basePrompt?.includes('кофейн') ? 'Кофейня' : 'Бизнес'} в ${basePrompt?.includes('краснодар') ? 'Краснодаре' : 'городе'}
 
-${basePrompt.includes('акци') ? '🎉 Специальное предложение!' : '✨ Новое предложение!'}
+${basePrompt?.includes('акци') ? '🎉 Специальное предложение!' : '✨ Новое предложение!'}
 
-${basePrompt.includes('латте') ? '☕ Латте всего за 100 рублей!' : '💎 Выгодные цены!'}
+${basePrompt?.includes('латте') ? '☕ Латте всего за 100 рублей!' : '💎 Выгодные цены!'}
 
-${basePrompt.includes('кофейн') ? 'Приходите в нашу уютную кофейню и наслаждайтесь ароматным кофе!' : 'Мы рады предложить вам качественные услуги!'}
+${basePrompt?.includes('кофейн') ? 'Приходите в нашу уютную кофейню и наслаждайтесь ароматным кофе!' : 'Мы рады предложить вам качественные услуги!'}
 
 🚀 Telegram - идеальная платформа для быстрого общения с аудиторией!
 
@@ -306,45 +262,45 @@ ${basePrompt.includes('кофейн') ? 'Приходите в нашу уютн
       case 'EMAIL_CAMPAIGN':
         return `📧 Email-рассылка
 
-Тема письма: ${basePrompt.includes('акци') ? 'Специальное предложение!' : 'Новое предложение!'}
+Тема письма: ${basePrompt?.includes('акци') ? 'Специальное предложение!' : 'Новое предложение!'}
 
 Дорогие подписчики!
 
-${basePrompt.includes('кофейн') ? 'Мы рады пригласить вас в нашу кофейню!' : 'Мы рады поделиться с вами новостями!'}
+${basePrompt?.includes('кофейн') ? 'Мы рады пригласить вас в нашу кофейню!' : 'Мы рады поделиться с вами новостями!'}
 
-${basePrompt.includes('латте') ? '☕ Латте всего за 100 рублей!' : '💎 Выгодные цены!'}
+${basePrompt?.includes('латте') ? '☕ Латте всего за 100 рублей!' : '💎 Выгодные цены!'}
 
-${basePrompt.includes('акци') ? 'Не упустите возможность воспользоваться нашим специальным предложением!' : 'Мы всегда рады видеть вас!'}
+${basePrompt?.includes('акци') ? 'Не упустите возможность воспользоваться нашим специальным предложением!' : 'Мы всегда рады видеть вас!'}
 
 С уважением,
-Команда ${basePrompt.includes('кофейн') ? 'Кофейни' : 'Бизнеса'}
+Команда ${basePrompt?.includes('кофейн') ? 'Кофейни' : 'Бизнеса'}
 
 P.S. Не забудьте подписаться на наши социальные сети!`
 
       case 'BLOG_ARTICLE':
         return `📝 Статья для блога
 
-# ${basePrompt.includes('кофейн') ? 'Кофейня в Краснодаре' : 'Бизнес в городе'}
+# ${basePrompt?.includes('кофейн') ? 'Кофейня в Краснодаре' : 'Бизнес в городе'}
 
 ## Введение
 
-${basePrompt.includes('кофейн') ? 'Кофейни становятся все более популярными в Краснодаре.' : 'Бизнес в современном мире требует особого подхода.'}
+${basePrompt?.includes('кофейн') ? 'Кофейни становятся все более популярными в Краснодаре.' : 'Бизнес в современном мире требует особого подхода.'}
 
 ## Основная часть
 
-${basePrompt.includes('акци') ? 'Специальные предложения - это отличный способ привлечь клиентов.' : 'Качественный сервис - основа успешного бизнеса.'}
+${basePrompt?.includes('акци') ? 'Специальные предложения - это отличный способ привлечь клиентов.' : 'Качественный сервис - основа успешного бизнеса.'}
 
-${basePrompt.includes('латте') ? 'Латте за 100 рублей - это выгодное предложение для клиентов.' : 'Важно предлагать клиентам то, что им действительно нужно.'}
+${basePrompt?.includes('латте') ? 'Латте за 100 рублей - это выгодное предложение для клиентов.' : 'Важно предлагать клиентам то, что им действительно нужно.'}
 
 ## Практические советы
 
-1. ${basePrompt.includes('кофейн') ? 'Создайте уютную атмосферу' : 'Изучите потребности клиентов'}
-2. ${basePrompt.includes('акци') ? 'Предлагайте выгодные акции' : 'Развивайте качественный сервис'}
-3. ${basePrompt.includes('латте') ? 'Экспериментируйте с меню' : 'Не бойтесь инноваций'}
+1. ${basePrompt?.includes('кофейн') ? 'Создайте уютную атмосферу' : 'Изучите потребности клиентов'}
+2. ${basePrompt?.includes('акци') ? 'Предлагайте выгодные акции' : 'Развивайте качественный сервис'}
+3. ${basePrompt?.includes('латте') ? 'Экспериментируйте с меню' : 'Не бойтесь инноваций'}
 
 ## Заключение
 
-${basePrompt.includes('кофейн') ? 'Кофейня - это место, где люди могут отдохнуть и насладиться вкусным кофе.' : 'Успешный бизнес строится на внимании к деталям и заботе о клиентах.'}
+${basePrompt?.includes('кофейн') ? 'Кофейня - это место, где люди могут отдохнуть и насладиться вкусным кофе.' : 'Успешный бизнес строится на внимании к деталям и заботе о клиентах.'}
 
 ---
 
@@ -353,16 +309,16 @@ ${basePrompt.includes('кофейн') ? 'Кофейня - это место, г�
       case 'VIDEO_SCRIPT':
         return `🎬 Сценарий видео
 
-# ${basePrompt.includes('кофейн') ? 'Кофейня в Краснодаре' : 'Бизнес в городе'}
+# ${basePrompt?.includes('кофейн') ? 'Кофейня в Краснодаре' : 'Бизнес в городе'}
 
 ## СЦЕНА 1: Вступление (0-15 сек)
-"Привет, друзья! Сегодня мы поговорим о ${basePrompt.includes('кофейн') ? 'кофейне в Краснодаре' : 'бизнесе в городе'}."
+"Привет, друзья! Сегодня мы поговорим о ${basePrompt?.includes('кофейн') ? 'кофейне в Краснодаре' : 'бизнесе в городе'}."
 
 ## СЦЕНА 2: Основная часть (15-45 сек)
-"${basePrompt.includes('акци') ? 'Специальные предложения - это отличный способ привлечь клиентов.' : 'Качественный сервис - основа успешного бизнеса.'}"
+"${basePrompt?.includes('акци') ? 'Специальные предложения - это отличный способ привлечь клиентов.' : 'Качественный сервис - основа успешного бизнеса.'}"
 
 ## СЦЕНА 3: Практические советы (45-60 сек)
-"${basePrompt.includes('латте') ? 'Латте за 100 рублей - это выгодное предложение!' : 'Важно предлагать клиентам то, что им нужно!'}"
+"${basePrompt?.includes('латте') ? 'Латте за 100 рублей - это выгодное предложение!' : 'Важно предлагать клиентам то, что им нужно!'}"
 
 ## СЦЕНА 4: Заключение (60-75 сек)
 "Надеюсь, эта информация была полезна! Подписывайтесь на канал!"
@@ -373,10 +329,10 @@ ${basePrompt.includes('кофейн') ? 'Кофейня - это место, г�
       case 'IMAGE_GENERATION':
         return `🖼️ Описание для генерации изображения
 
-${basePrompt.includes('кофейн') ? 'Уютная кофейня в центре города с ароматным кофе и теплой атмосферой' : 'Современный бизнес-центр с профессиональной обстановкой'}
+${basePrompt?.includes('кофейн') ? 'Уютная кофейня в центре города с ароматным кофе и теплой атмосферой' : 'Современный бизнес-центр с профессиональной обстановкой'}
 
-**Стиль:** ${basePrompt.includes('кофейн') ? 'уютный, теплый, домашний' : 'современный, профессиональный, качественный'}
-**Цветовая схема:** ${basePrompt.includes('кофейн') ? 'теплые тона: коричневый, бежевый, золотой' : 'яркие, привлекающие внимание цвета'}
+**Стиль:** ${basePrompt?.includes('кофейн') ? 'уютный, теплый, домашний' : 'современный, профессиональный, качественный'}
+**Цветовая схема:** ${basePrompt?.includes('кофейн') ? 'теплые тона: коричневый, бежевый, золотой' : 'яркие, привлекающие внимание цвета'}
 **Композиция:** сбалансированная, с акцентом на главном объекте
 **Детали:** высокое разрешение, четкие линии, приятная эстетика
 
@@ -384,5 +340,5 @@ ${basePrompt.includes('кофейн') ? 'Уютная кофейня в цент
       }
   }
   
-  return generateSmartContent(prompt, templateType)
+  return generateSmartContent(prompt || '', templateType || 'VK_POST')
 }
