@@ -36,10 +36,17 @@ export default function DashboardPage() {
 
   const fetchGenerationHistory = async () => {
     try {
+      console.log('Fetching generation history...')
       const response = await fetch('/api/generations/history')
+      console.log('Response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
-        setGenerations(data.generations || [])
+        console.log('Generation history data:', data)
+        setGenerations(data.generations || data || [])
+      } else {
+        const errorData = await response.json()
+        console.error('API error:', errorData)
       }
     } catch (error) {
       console.error('Failed to fetch generation history:', error)
