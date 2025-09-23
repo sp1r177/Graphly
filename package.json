@@ -10,21 +10,18 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
-    "next": "14.0.0",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "typescript": "5.2.2",
+    "@supabase/supabase-js": "^2.57.4",
+    "@types/bcryptjs": "^2.4.4",
+    "@types/jsonwebtoken": "^9.0.4",
     "@types/node": "20.8.0",
     "@types/react": "18.2.25",
     "@types/react-dom": "18.2.11",
-    "tailwindcss": "3.3.5",
     "autoprefixer": "10.4.16",
-    "postcss": "8.4.31",
-    "eslint": "8.51.0",
-    "eslint-config-next": "14.0.0",
-    "lucide-react": "^0.288.0",
+    "axios": "^1.6.0",
+    "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+<<<<<<< HEAD
     "tailwind-merge": "^1.14.0",
     "prisma": "^5.5.2",
     "@prisma/client": "^5.5.2",
@@ -35,6 +32,22 @@
     "next-auth": "^4.24.5",
     "react-i18next": "^13.3.1",
     "i18next": "^23.6.0"
+=======
+    "eslint": "8.51.0",
+    "eslint-config-next": "14.0.0",
+    "i18next": "^23.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.288.0",
+    "next": "14.0.0",
+    "next-auth": "^4.24.5",
+    "postcss": "8.4.31",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-i18next": "^13.3.1",
+    "tailwind-merge": "^1.14.0",
+    "tailwindcss": "3.3.5",
+    "typescript": "5.2.2"
+>>>>>>> cdae855d32a0d724875c7c5a18859a3a191a40f4
   },
   "devDependencies": {
     "@types/node": "^20.8.0",
