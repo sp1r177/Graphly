@@ -117,7 +117,8 @@ export async function POST(request: NextRequest) {
     // Устанавливаем куки
     response.cookies.set('graphly-auth-token', authResult.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      // Allow non-HTTPS in development and when running plain HTTP (e.g. Docker local/prod)
+      secure: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set('graphly-user-id', authResult.user.id, {
       httpOnly: false, // Нужно для fallback
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
