@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     
     // Пробуем получить пользователя
     const authUser = await getUserFromRequest(request)
-    console.log('getUserFromRequest result:', authUser ? { id: authUser.id, email: authUser.email } : 'NULL')
+    console.log('getUserFromRequest result:', authUser ? { id: authUser.id, name: authUser.user_metadata?.name } : 'NULL')
     
     let userProfile = null
     if (authUser) {
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         authHeader: authHeader ? 'SET' : 'NOT_SET',
         authToken: authToken ? 'SET' : 'NOT_SET',
         graphlyUserId: graphlyUserId || 'NOT_SET',
-        authUser: authUser ? { id: authUser.id, email: authUser.email } : null,
+        authUser: authUser ? { id: authUser.id, name: authUser.user_metadata?.name } : null,
         userProfile: userProfile ? { 
           id: userProfile.id, 
           plan: userProfile.plan?.name || 'FREE',

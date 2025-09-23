@@ -80,7 +80,7 @@ export function VkIdWidget({ onSuccess, className }: VkIdWidgetProps) {
         body: JSON.stringify({
           accessToken: data.access_token,
           userId: data.user_id,
-          email: data.email,
+          name: `${data.firstName} ${data.lastName}`,
           firstName: data.first_name,
           lastName: data.last_name,
           avatarUrl: data.avatar_url,

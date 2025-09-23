@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     // Получаем пользователя из запроса
     const authUser = await getUserFromRequest(request)
-    console.log('Auth user:', authUser ? { id: authUser.id, email: authUser.email } : 'NULL')
+    console.log('Auth user:', authUser ? { id: authUser.id, name: authUser.user_metadata?.name } : 'NULL')
     
     if (!authUser) {
       console.log('=== GENERATE API: NO AUTH USER ===')

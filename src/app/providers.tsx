@@ -104,7 +104,6 @@ const translations = {
 // User Context
 interface User {
   id: string
-  email: string
   name?: string
   subscriptionStatus: 'FREE' | 'PRO' | 'ULTRA'
   usageCountDay: number

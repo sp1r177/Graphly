@@ -15,21 +15,12 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const { name, email } = await request.json()
-
-    // Validate email format
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
-      )
-    }
+    const { name } = await request.json()
 
     // Update user profile in Prisma
     try {
       const updates: any = {}
       if (name !== undefined) updates.name = name
-      if (email && email !== authUser.email) updates.email = email
       
       if (Object.keys(updates).length > 0) {
         await updateUserProfile(authUser.id, updates)
@@ -41,7 +32,6 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({
         id: authUser.id,
         name: updatedProfile?.name || name,
-        email: updatedProfile?.email || authUser.email,
       })
     } catch (profileError) {
       console.error('Profile update error:', profileError)
