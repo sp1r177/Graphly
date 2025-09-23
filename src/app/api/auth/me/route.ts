@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
             const limits = await getUserLimits(userProfile.id)
             return NextResponse.json({
               id: userProfile.id,
-              email: userProfile.email,
               name: userProfile.name,
               subscriptionStatus: userProfile.plan?.name || 'FREE',
               usageCountDay: limits.used,
@@ -57,7 +56,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       id: authUser.id,
-      email: authUser.email,
       name: authUser.user_metadata?.name || userProfile.name,
       subscriptionStatus: userProfile.plan?.name || 'FREE',
       usageCountDay: limits.used,

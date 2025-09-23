@@ -36,7 +36,6 @@ export default function ProfilePage() {
     if (user) {
       setProfileData({
         name: user.name || '',
-        email: user.email,
       })
     }
   }, [user])
