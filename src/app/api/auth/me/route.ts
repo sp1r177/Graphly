@@ -13,6 +13,28 @@ export async function GET(request: NextRequest) {
     console.log('Auth user:', authUser)
     
     if (!authUser) {
+      // Hard fallback: try `graphly-user-id` cookie directly
+      const fallbackUserId = request.cookies.get('graphly-user-id')?.value
+      if (fallbackUserId) {
+        try {
+          const userProfile = await getUserById(fallbackUserId)
+          if (userProfile) {
+            const limits = await getUserLimits(userProfile.id)
+            return NextResponse.json({
+              id: userProfile.id,
+              email: userProfile.email,
+              name: userProfile.name,
+              subscriptionStatus: userProfile.plan?.name || 'FREE',
+              usageCountDay: limits.used,
+              usageCountMonth: limits.used,
+              remainingTokens: limits.remaining,
+              createdAt: userProfile.createdAt,
+            })
+          }
+        } catch (e) {
+          console.log('Fallback by graphly-user-id failed:', e)
+        }
+      }
       console.log('No auth user found, returning 401')
       return NextResponse.json(
         { error: 'Unauthorized' },
