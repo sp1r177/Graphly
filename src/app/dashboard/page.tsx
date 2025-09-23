@@ -30,6 +30,12 @@ export default function DashboardPage() {
   const [generations, setGenerations] = useState<Generation[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
 
+  // Debug info
+  useEffect(() => {
+    console.log('Dashboard - User:', user)
+    console.log('Dashboard - Auth loading:', isAuthLoading)
+  }, [user, isAuthLoading])
+
   useEffect(() => {
     fetchGenerationHistory()
   }, [])
