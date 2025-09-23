@@ -165,7 +165,7 @@ export function LandingHero() {
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-700">Привет, {user.name}!</span>
+            <span className="text-sm text-gray-700">Привет, {user.name || user.email}!</span>
             <Button
               onClick={() => window.location.href = '/dashboard'}
               variant="outline"

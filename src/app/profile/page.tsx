@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
+    email: user?.email || '',
   })
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -35,6 +36,7 @@ export default function ProfilePage() {
     if (user) {
       setProfileData({
         name: user.name || '',
+        email: user.email || '',
       })
     }
   }, [user])
@@ -235,6 +237,21 @@ export default function ProfilePage() {
                       />
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email
+                      </label>
+                      <Input
+                        type="email"
+                        value={profileData.email}
+                        onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
+                        disabled
+                        className="bg-gray-50"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Для изменения email обратитесь в поддержку
+                      </p>
+                    </div>
 
                     <Button type="submit" disabled={isLoading} variant="primary">
                       {isLoading ? 'Сохраняем...' : 'Сохранить изменения'}

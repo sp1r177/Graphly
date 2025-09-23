@@ -97,7 +97,7 @@ export function Header() {
 
             {user ? (
               <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-600">{user.name}</span>
+                <span className="text-sm text-gray-600">{user.email}</span>
                 <Button variant="outline" onClick={handleLogout}>
                   {t('header.logout')}
                 </Button>

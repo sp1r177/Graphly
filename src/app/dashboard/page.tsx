@@ -175,7 +175,7 @@ export default function DashboardPage() {
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Добро пожаловать, {user?.name}!
+            Добро пожаловать, {user?.name || user?.email?.split('@')[0]}!
           </h1>
           <p className="text-gray-600">
             Создавайте уникальный контент с помощью искусственного интеллекта

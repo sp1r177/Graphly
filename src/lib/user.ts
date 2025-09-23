@@ -24,6 +24,7 @@ export interface UserProfile {
 // Создание или получение пользователя по VK ID
 export async function createOrGetUser(
   vkId: string,
+  email?: string,
   name?: string
 ): Promise<UserProfile> {
   // Сначала пытаемся найти существующего пользователя
@@ -40,6 +41,7 @@ export async function createOrGetUser(
     user = await prisma.user.create({
       data: {
         vk_id: vkId,
+        email: email || `${vkId}@vk.id`,
         name: name || `VK User ${vkId}`,
         planId: null, // По умолчанию без плана (бесплатный)
         usages: {
@@ -55,10 +57,10 @@ export async function createOrGetUser(
     })
   } else {
     // Обновляем данные пользователя, если они изменились
-    if (name && name !== user.name) {
+    if (email && email !== user.email) {
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { name },
+        data: { email, name: name || user.name },
         include: {
           plan: true,
           usages: true
@@ -100,6 +102,7 @@ export async function getUserByVkId(vkId: string): Promise<UserProfile | null> {
 export async function updateUserProfile(
   userId: string,
   updates: {
+    email?: string
     name?: string
     planId?: string
   }

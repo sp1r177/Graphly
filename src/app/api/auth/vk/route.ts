@@ -90,20 +90,22 @@ export async function POST(request: NextRequest) {
 
     const vkUser = userInfoData.response[0]
     const vkUserId = vkUser.id.toString()
+    const email = tokenData.email || `${vkUserId}@vk.id`
     const name = `${vkUser.first_name} ${vkUser.last_name}`
     
     console.log('VK user data:', { 
       vkUserId, 
+      email, 
       name,
       hasPhoto: !!vkUser.photo_200
     })
 
     // Создаем или получаем пользователя через Prisma
-    const authResult = await authenticateWithVK(vkUserId, name)
+    const authResult = await authenticateWithVK(vkUserId, email, name)
 
     console.log('VK auth success:', {
       userId: authResult.user.id,
-      name: authResult.user.name,
+      email: authResult.user.email,
       plan: authResult.user.plan
     })
 

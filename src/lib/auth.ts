@@ -3,15 +3,16 @@ import { createOrGetUser, getUserById, getUserByVkId } from './user'
 import jwt from 'jsonwebtoken'
 
 // VK ID авторизация
-export async function authenticateWithVK(vkId: string, name?: string) {
+export async function authenticateWithVK(vkId: string, email?: string, name?: string) {
   try {
-    const user = await createOrGetUser(vkId, name)
+    const user = await createOrGetUser(vkId, email, name)
     
     // Создаем JWT токен
     const token = jwt.sign(
       { 
         userId: user.id, 
-        vkId: user.vk_id
+        vkId: user.vk_id,
+        email: user.email 
       },
       process.env.NEXTAUTH_SECRET!,
       { expiresIn: '7d' }
@@ -21,6 +22,7 @@ export async function authenticateWithVK(vkId: string, name?: string) {
       user: {
         id: user.id,
         vk_id: user.vk_id,
+        email: user.email,
         name: user.name,
         plan: user.plan?.name || 'FREE'
       },
@@ -84,6 +86,7 @@ export async function getUserFromRequest(request: NextRequest) {
       console.log('Fallback auth successful for user:', profile.id)
       return {
         id: profile.id,
+        email: profile.email,
         user_metadata: { name: profile.name },
       } as any
     } catch (e) {
@@ -100,9 +103,10 @@ export async function getUserFromRequest(request: NextRequest) {
       console.log('No user found for token')
       return null
     }
-    console.log('User found:', user.id, user.name)
+    console.log('User found:', user.id, user.email)
     return {
       id: user.id,
+      email: user.email,
       user_metadata: { name: user.name },
     } as any
   } catch (error) {
