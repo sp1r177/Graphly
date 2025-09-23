@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { getUserProfile, createUserProfile } from '@/lib/supabase'
+import { authenticateWithVK } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,115 +91,42 @@ export async function POST(request: NextRequest) {
     const vkUser = userInfoData.response[0]
     const vkUserId = vkUser.id.toString()
     const email = tokenData.email || `${vkUserId}@vk.id`
+    const name = `${vkUser.first_name} ${vkUser.last_name}`
+    
     console.log('VK user data:', { 
       vkUserId, 
       email, 
-      name: `${vkUser.first_name} ${vkUser.last_name}`,
+      name,
       hasPhoto: !!vkUser.photo_200
     })
 
-    // Создаем или получаем Supabase клиент
-    const supabaseUrl = process.env.SUPABASE_URL
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      )
-    }
-
-    const admin = createClient(supabaseUrl, supabaseServiceKey)
-
-    // Проверяем, существует ли пользователь с таким VK ID
-    const { data: existingUser } = await admin.auth.admin.listUsers()
-    let supabaseUser = existingUser?.users?.find(user => 
-      user.user_metadata?.vk_id === vkUserId
-    )
-
-    if (!supabaseUser) {
-      // Создаем нового пользователя в Supabase
-      const { data: newUser, error: createError } = await admin.auth.admin.createUser({
-        email,
-        email_confirm: true, // VK уже подтвердил email
-        user_metadata: {
-          vk_id: vkUserId,
-          name: `${vkUser.first_name} ${vkUser.last_name}`,
-          avatar_url: vkUser.photo_200,
-          provider: 'vk'
-        }
-      })
-
-      if (createError || !newUser.user) {
-        console.error('Error creating Supabase user:', createError)
-        return NextResponse.json(
-          { error: 'Failed to create user account' },
-          { status: 500 }
-        )
-      }
-
-      supabaseUser = newUser.user
-
-      // Создаем профиль пользователя
-      try {
-        await createUserProfile(
-          supabaseUser.id,
-          email,
-          `${vkUser.first_name} ${vkUser.last_name}`,
-          vkUser.photo_200,
-          vkUserId,
-          'vk'
-        )
-      } catch (profileError) {
-        console.error('Error creating user profile:', profileError)
-      }
-    }
-
-    // Получаем профиль пользователя
-    let userProfile = null
-    try {
-      userProfile = await getUserProfile(supabaseUser.id)
-    } catch (profileError) {
-      console.error('Error fetching user profile:', profileError)
-    }
-
-    // Создаем сессию для пользователя
-    const { data: sessionData, error: sessionError } = await admin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: supabaseUser.email!,
-    })
-
-    if (sessionError || !sessionData.properties?.hashed_token) {
-      console.error('Error generating session:', sessionError)
-      return NextResponse.json(
-        { error: 'Failed to create user session' },
-        { status: 500 }
-      )
-    }
+    // Создаем или получаем пользователя через Prisma
+    const authResult = await authenticateWithVK(vkUserId, email, name)
 
     console.log('VK auth success:', {
-      userId: supabaseUser.id,
-      email: supabaseUser.email,
-      subscriptionStatus: userProfile?.subscription_status || 'FREE'
+      userId: authResult.user.id,
+      email: authResult.user.email,
+      plan: authResult.user.plan
     })
 
     const response = NextResponse.json({
       message: 'VK authentication successful',
-      user: {
-        id: supabaseUser.id,
-        email: supabaseUser.email,
-        name: supabaseUser.user_metadata?.name || userProfile?.name,
-        avatar_url: supabaseUser.user_metadata?.avatar_url,
-        subscriptionStatus: userProfile?.subscription_status || 'FREE',
-        usageCountDay: userProfile?.usage_count_day || 0,
-        usageCountMonth: userProfile?.usage_count_month || 0,
-      }
+      user: authResult.user
     })
 
-    // Устанавливаем куку с токеном доступа
-    response.cookies.set('sb-access-token', sessionData.properties.hashed_token, {
+    // Устанавливаем куки
+    response.cookies.set('graphly-auth-token', authResult.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      // Allow non-HTTPS in development and when running plain HTTP (e.g. Docker local/prod)
+      secure: false,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
+
+    response.cookies.set('graphly-user-id', authResult.user.id, {
+      httpOnly: false, // Нужно для fallback
+      secure: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days

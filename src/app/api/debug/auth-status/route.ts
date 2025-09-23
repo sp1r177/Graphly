@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
-import { getUserProfile } from '@/lib/supabase'
+import { getUserById } from '@/lib/user'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
     console.log('Authorization header:', authHeader)
     
     // Проверяем конкретные куки
-    const sbToken = request.cookies.get('sb-access-token')?.value
+    const authToken = request.cookies.get('graphly-auth-token')?.value
     const graphlyUserId = request.cookies.get('graphly-user-id')?.value
     
-    console.log('sb-access-token:', sbToken ? `${sbToken.substring(0, 20)}...` : 'NOT_SET')
+    console.log('graphly-auth-token:', authToken ? `${authToken.substring(0, 20)}...` : 'NOT_SET')
     console.log('graphly-user-id:', graphlyUserId || 'NOT_SET')
     
     // Пробуем получить пользователя
@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
     let userProfile = null
     if (authUser) {
       try {
-        userProfile = await getUserProfile(authUser.id)
-        console.log('User profile:', userProfile ? { id: userProfile.id, subscription: userProfile.subscription_status } : 'NULL')
+        userProfile = await getUserById(authUser.id)
+        console.log('User profile:', userProfile ? { id: userProfile.id, plan: userProfile.plan?.name } : 'NULL')
       } catch (e) {
         console.log('Error getting profile:', e)
       }
@@ -44,13 +44,13 @@ export async function GET(request: NextRequest) {
       debug: {
         cookies: allCookies.map(c => ({ name: c.name, hasValue: !!c.value })),
         authHeader: authHeader ? 'SET' : 'NOT_SET',
-        sbToken: sbToken ? 'SET' : 'NOT_SET',
+        authToken: authToken ? 'SET' : 'NOT_SET',
         graphlyUserId: graphlyUserId || 'NOT_SET',
         authUser: authUser ? { id: authUser.id, email: authUser.email } : null,
         userProfile: userProfile ? { 
           id: userProfile.id, 
-          subscription: userProfile.subscription_status,
-          usageDay: userProfile.usage_count_day 
+          plan: userProfile.plan?.name || 'FREE',
+          usage: userProfile.usages[0]?.used || 0
         } : null
       }
     })

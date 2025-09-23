@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,44 +15,28 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database not configured' },
-        { status: 500 }
-      )
-    }
-
-    const { data: generations, error } = await supabase
-      .from('generations')
-      .select(`
-        id,
-        prompt,
-        output_text,
-        output_image_url,
-        template_type,
-        created_at
-      `)
-      .eq('user_id', authUser.id)
-      .order('created_at', { ascending: false })
-      .limit(50)
-
-    if (error) {
-      console.error('Error fetching generations:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch generations' },
-        { status: 500 }
-      )
-    }
+    const generations = await prisma.generation.findMany({
+      where: { userId: authUser.id },
+      select: {
+        id: true,
+        prompt: true,
+        outputText: true,
+        templateType: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    })
 
     // Transform data to match expected format
-    const formattedGenerations = generations?.map(gen => ({
+    const formattedGenerations = generations.map(gen => ({
       id: gen.id,
       prompt: gen.prompt,
-      outputText: gen.output_text,
-      outputImageUrl: gen.output_image_url,
-      templateType: gen.template_type,
-      timestamp: gen.created_at,
-    })) || []
+      outputText: gen.outputText,
+      outputImageUrl: null, // Not implemented yet
+      templateType: gen.templateType,
+      timestamp: gen.createdAt,
+    }))
 
     return NextResponse.json(formattedGenerations)
   } catch (error) {

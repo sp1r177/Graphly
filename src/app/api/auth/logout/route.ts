@@ -6,6 +6,23 @@ export async function POST() {
       message: 'Logout successful'
     })
 
+    // Clear Graphly auth cookies
+    response.cookies.set('graphly-auth-token', '', {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    })
+
+    response.cookies.set('graphly-user-id', '', {
+      httpOnly: false,
+      secure: false,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    })
+
     // Clear access token cookie
     response.cookies.set('sb-access-token', '', {
       httpOnly: false, // Изменено на false для отладки

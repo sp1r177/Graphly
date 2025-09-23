@@ -1,45 +1,22 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    console.log('Server-side Supabase test:', {
-      SUPABASE_URL: process.env.SUPABASE_URL,
-      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET',
-      supabaseClient: supabase ? 'CREATED' : 'NULL'
+    console.log('Server-side Prisma test:', {
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET',
+      prismaClient: prisma ? 'CREATED' : 'NULL'
     })
 
-    if (!supabase) {
-      return NextResponse.json({
-        status: 'error',
-        message: 'Supabase client is null',
-        env: {
-          SUPABASE_URL: process.env.SUPABASE_URL,
-          SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET'
-        }
-      })
-    }
-
-    // Тест подключения
-    const { data, error } = await supabase.auth.getSession()
+    // Тест подключения к базе данных
+    const userCount = await prisma.user.count()
     
-    if (error) {
-      return NextResponse.json({
-        status: 'error',
-        message: `Supabase error: ${error.message}`,
-        env: {
-          SUPABASE_URL: process.env.SUPABASE_URL,
-          SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET'
-        }
-      })
-    }
-
     return NextResponse.json({
       status: 'success',
-      message: 'Supabase connection successful',
+      message: 'Prisma connection successful',
+      data: { userCount },
       env: {
-        SUPABASE_URL: process.env.SUPABASE_URL,
-        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET'
+        DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET'
       }
     })
   } catch (error: any) {
@@ -47,8 +24,7 @@ export async function GET() {
       status: 'error',
       message: `Connection error: ${error.message}`,
       env: {
-        SUPABASE_URL: process.env.SUPABASE_URL,
-        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET'
+        DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET'
       }
     })
   }

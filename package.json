@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "DISABLE_ESLINT_PLUGIN=true next build",
+    "build": "npx prisma generate || echo 'Prisma generate failed, continuing...' && DISABLE_ESLINT_PLUGIN=true next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
@@ -20,6 +21,18 @@
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+<<<<<<< HEAD
+    "tailwind-merge": "^1.14.0",
+    "prisma": "^5.5.2",
+    "@prisma/client": "^5.5.2",
+    "bcryptjs": "^2.4.3",
+    "@types/bcryptjs": "^2.4.4",
+    "jsonwebtoken": "^9.0.2",
+    "@types/jsonwebtoken": "^9.0.4",
+    "next-auth": "^4.24.5",
+    "react-i18next": "^13.3.1",
+    "i18next": "^23.6.0"
+=======
     "eslint": "8.51.0",
     "eslint-config-next": "14.0.0",
     "i18next": "^23.6.0",
@@ -34,6 +47,7 @@
     "tailwind-merge": "^1.14.0",
     "tailwindcss": "3.3.5",
     "typescript": "5.2.2"
+>>>>>>> cdae855d32a0d724875c7c5a18859a3a191a40f4
   },
   "devDependencies": {
     "@types/node": "^20.8.0",

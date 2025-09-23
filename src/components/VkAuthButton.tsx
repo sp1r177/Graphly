@@ -20,7 +20,7 @@ export function VkAuthButton({ onSuccess, className, children }: VkAuthButtonPro
     setIsLoading(true)
     
     // VK ID параметры
-    const vkClientId = process.env.NEXT_PUBLIC_VK_CLIENT_ID
+    const vkClientId = process.env.NEXT_PUBLIC_VK_CLIENT_ID || '54144051' // Fallback для разработки
     const redirectUri = `${window.location.origin}/auth/vk/callback`
     
     if (!vkClientId) {

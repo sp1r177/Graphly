@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
@@ -13,16 +13,16 @@ export async function GET() {
       name: 'Environment Variables',
       status: 'unknown',
       details: {
-        SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT_SET',
-        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET',
-        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'NOT_SET',
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET',
+        DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET',
+        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? 'SET' : 'NOT_SET',
+        VK_CLIENT_ID: process.env.VK_CLIENT_ID ? 'SET' : 'NOT_SET',
+        VK_CLIENT_SECRET: process.env.VK_CLIENT_SECRET ? 'SET' : 'NOT_SET',
         YANDEX_API_KEY: process.env.YANDEX_API_KEY ? 'SET' : 'NOT_SET',
         YANDEX_FOLDER_ID: process.env.YANDEX_FOLDER_ID ? 'SET' : 'NOT_SET',
       }
     }
 
-    if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+    if (process.env.DATABASE_URL && process.env.NEXTAUTH_SECRET) {
       envTest.status = 'pass'
     } else {
       envTest.status = 'fail'
@@ -30,37 +30,23 @@ export async function GET() {
 
     results.tests.push(envTest)
 
-    // Test 2: Supabase connection
-    const supabaseTest = {
-      name: 'Supabase Connection',
+    // Test 2: Prisma connection
+    const prismaTest = {
+      name: 'Prisma Connection',
       status: 'unknown',
       details: {}
     }
 
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('user_profiles')
-          .select('count')
-          .limit(1)
-
-        if (error) {
-          supabaseTest.status = 'fail'
-          supabaseTest.details = { error: error.message, code: error.code }
-        } else {
-          supabaseTest.status = 'pass'
-          supabaseTest.details = { message: 'Connection successful' }
-        }
-      } catch (err) {
-        supabaseTest.status = 'fail'
-        supabaseTest.details = { error: err instanceof Error ? err.message : 'Unknown error' }
-      }
-    } else {
-      supabaseTest.status = 'fail'
-      supabaseTest.details = { error: 'Supabase client not initialized' }
+    try {
+      const userCount = await prisma.user.count()
+      prismaTest.status = 'pass'
+      prismaTest.details = { message: 'Connection successful', userCount }
+    } catch (err) {
+      prismaTest.status = 'fail'
+      prismaTest.details = { error: err instanceof Error ? err.message : 'Unknown error' }
     }
 
-    results.tests.push(supabaseTest)
+    results.tests.push(prismaTest)
 
     // Test 3: Database tables
     const tablesTest = {
@@ -69,37 +55,22 @@ export async function GET() {
       details: {}
     }
 
-    if (supabase) {
-      try {
-        // Test user_profiles table
-        const { error: profilesError } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .limit(1)
+    try {
+      // Test all tables
+      const userCount = await prisma.user.count()
+      const planCount = await prisma.plan.count()
+      const usageCount = await prisma.usage.count()
+      const generationCount = await prisma.generation.count()
+      const paymentCount = await prisma.payment.count()
 
-        // Test generations table
-        const { error: generationsError } = await supabase
-          .from('generations')
-          .select('id')
-          .limit(1)
-
-        if (profilesError || generationsError) {
-          tablesTest.status = 'fail'
-          tablesTest.details = {
-            profilesError: profilesError?.message,
-            generationsError: generationsError?.message
-          }
-        } else {
-          tablesTest.status = 'pass'
-          tablesTest.details = { message: 'All tables accessible' }
-        }
-      } catch (err) {
-        tablesTest.status = 'fail'
-        tablesTest.details = { error: err instanceof Error ? err.message : 'Unknown error' }
+      tablesTest.status = 'pass'
+      tablesTest.details = { 
+        message: 'All tables accessible',
+        counts: { userCount, planCount, usageCount, generationCount, paymentCount }
       }
-    } else {
+    } catch (err) {
       tablesTest.status = 'fail'
-      tablesTest.details = { error: 'Supabase client not initialized' }
+      tablesTest.details = { error: err instanceof Error ? err.message : 'Unknown error' }
     }
 
     results.tests.push(tablesTest)
