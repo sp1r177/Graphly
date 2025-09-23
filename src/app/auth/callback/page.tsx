@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase, createUserProfile } from '@/lib/supabase'
 
 export default function AuthCallback() {
   const router = useRouter()
@@ -12,49 +11,37 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Обмениваем код из URL на сессию (корректный способ для action_link)
-        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href)
+        // VK ID callback handling
+        const urlParams = new URLSearchParams(window.location.search)
+        const code = urlParams.get('code')
+        const state = urlParams.get('state')
 
-        if (error) {
-          console.error('Auth callback error:', error)
+        if (!code) {
           setStatus('error')
-          setMessage('Ошибка подтверждения email')
+          setMessage('Отсутствует код авторизации')
           return
         }
 
-        if (data.session?.user) {
-          const user = data.session.user
+        // Отправляем код на сервер для обработки
+        const response = await fetch('/api/auth/vk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, state })
+        })
 
-          // Создаем профиль пользователя (если его нет)
-          try {
-            await createUserProfile(user.id, user.email!, user.user_metadata?.name || '')
-          } catch (profileError: any) {
-            if (!String(profileError?.message || '').includes('duplicate')) {
-              console.error('Error creating user profile:', profileError)
-            }
-          }
-
-          // Устанавливаем httpOnly cookie с access_token через серверный эндпоинт
-          try {
-            await fetch('/api/auth/set-cookie', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ accessToken: data.session.access_token })
-            })
-          } catch (cookieError) {
-            console.error('Failed to set cookie:', cookieError)
-          }
-
-          setStatus('success')
-          setMessage('Email успешно подтвержден! Перенаправляем...')
-
-          setTimeout(() => {
-            router.push('/')
-          }, 1500)
-        } else {
+        if (!response.ok) {
+          const errorData = await response.json()
           setStatus('error')
-          setMessage('Не удалось получить данные пользователя')
+          setMessage(errorData.error || 'Ошибка авторизации')
+          return
         }
+
+        setStatus('success')
+        setMessage('Авторизация успешна! Перенаправляем...')
+
+        setTimeout(() => {
+          router.push('/')
+        }, 1500)
       } catch (error) {
         console.error('Unexpected error:', error)
         setStatus('error')

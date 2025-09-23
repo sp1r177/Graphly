@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
-import { supabase, updateUserProfile, getUserProfile } from '@/lib/supabase'
+import { updateUserProfile, getUserById } from '@/lib/user'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,39 +25,7 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Update Supabase auth user if email is being changed
-    if (email && email !== authUser.email) {
-      try {
-        const { error: authError } = await supabase.auth.updateUser({
-          email: email
-        })
-        
-        if (authError) {
-          return NextResponse.json(
-            { error: 'Failed to update email in auth system' },
-            { status: 400 }
-          )
-        }
-      } catch (authUpdateError) {
-        return NextResponse.json(
-          { error: 'Email update failed' },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Update user metadata if name is being changed
-    if (name) {
-      try {
-        await supabase.auth.updateUser({
-          data: { name: name }
-        })
-      } catch (metadataError) {
-        console.error('Failed to update user metadata:', metadataError)
-      }
-    }
-
-    // Update user profile in our custom table
+    // Update user profile in Prisma
     try {
       const updates: any = {}
       if (name !== undefined) updates.name = name
@@ -68,7 +36,7 @@ export async function PUT(request: NextRequest) {
       }
       
       // Get updated profile
-      const updatedProfile = await getUserProfile(authUser.id)
+      const updatedProfile = await getUserById(authUser.id)
       
       return NextResponse.json({
         id: authUser.id,
