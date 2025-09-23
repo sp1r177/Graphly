@@ -10,7 +10,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  output: 'standalone',
+  // output: 'standalone', // Закомментировано для обычного запуска
   poweredByHeader: false,
   experimental: {
     esmExternals: false,
