@@ -1,27 +1,38 @@
-# Строим приложение
-FROM node:20-alpine AS build
+# Build stage
+FROM node:20-bullseye-slim AS build
 WORKDIR /app
 
-# Скопируем зависимости
+# Environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Install dependencies
 COPY package*.json ./
+RUN npm ci --no-audit --no-fund
 
-# Установим зависимости
-RUN npm install
-
-# Скопируем весь проект
+# Copy source
 COPY . .
 
-# Сборка
+# Build the app (includes Prisma generate via package.json script)
 RUN npm run build
 
-# Финальный образ
-FROM node:20-alpine
+# Runtime stage
+FROM node:20-bullseye-slim
 WORKDIR /app
 
-# Скопируем всё из сборочного контейнера
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Install required system deps for Prisma/OpenSSL
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy built app
 COPY --from=build /app ./
 
 EXPOSE 3000
 
-# Запуск Next.js
-CMD ["sh", "-c", "npx next start -p 3000 -H 0.0.0.0"]
+# Run Next.js standalone server as recommended for output: standalone
+CMD ["node", ".next/standalone/server.js"]
