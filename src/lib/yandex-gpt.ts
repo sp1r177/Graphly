@@ -38,10 +38,9 @@ export class YandexGPTService {
   private useAsyncMode: boolean
 
   constructor() {
-    // Поддержка разных названий переменных окружения
     this.apiKey = process.env.YANDEX_GPT_API_KEY || process.env.YANDEX_API_KEY || ''
     this.folderId = process.env.YANDEX_GPT_FOLDER_ID || process.env.YANDEX_FOLDER_ID || ''
-    this.useAsyncMode = process.env.YANDEX_GPT_ASYNC_MODE === 'true' || false // По умолчанию синхронный режим
+    this.useAsyncMode = process.env.YANDEX_GPT_ASYNC_MODE === 'true' || false
     this.baseUrl = this.useAsyncMode 
       ? 'https://llm.api.cloud.yandex.net/foundationModels/v1/completionAsync'
       : 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion'
@@ -104,14 +103,12 @@ export class YandexGPTService {
     
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; text: string }> = []
     
-    // Добавляем системный промпт для конкретного типа контента
     if (systemPrompt) {
       messages.push({ role: 'system', text: systemPrompt })
     } else {
       messages.push({ role: 'system', text: this.getSystemPromptForTemplate(templateType) })
     }
     
-    // Добавляем пользовательский промпт
     messages.push({ role: 'user', text: prompt })
 
     const requestData: YandexGPTRequest = {
@@ -132,12 +129,8 @@ export class YandexGPTService {
         console.log(`Sending request to Yandex GPT Sync API (attempt ${attempt}/${maxRetries}):`, {
           url: this.baseUrl,
           modelUri: requestData.modelUri,
-<<<<<<< HEAD
-          messagesCount: requestData.messages.length
-=======
           messagesCount: requestData.messages.length,
           maxTokens: requestData.completionOptions.maxTokens
->>>>>>> b1b1d04 (fix: обновил Dockerfile и конфиг)
         })
 
         const response = await axios.post<YandexGPTResponse>(
@@ -148,29 +141,15 @@ export class YandexGPTService {
               'Authorization': `Api-Key ${this.apiKey}`,
               'Content-Type': 'application/json'
             },
-            timeout: 60000 // 60 секунд таймаут
+            timeout: 60000
           }
         )
-
-        console.log('Yandex GPT Sync API response:', {
-          status: response.status,
-          hasResult: !!response.data.result,
-          alternativesCount: response.data.result?.alternatives?.length || 0
-        })
 
         const result = response.data.result
         const generatedText = result.alternatives?.[0]?.message?.text || ''
         const tokensUsed = parseInt(result.usage?.totalTokens) || 0
 
-        console.log('Generated content:', {
-          textLength: generatedText.length,
-          tokensUsed
-        })
-
-        return {
-          text: generatedText,
-          tokensUsed
-        }
+        return { text: generatedText, tokensUsed }
       } catch (error) {
         lastError = error
         console.error(`Yandex GPT Sync API error (attempt ${attempt}/${maxRetries}):`, {
@@ -180,16 +159,13 @@ export class YandexGPTService {
           code: (error as any)?.code
         })
         
-        // Если это не последняя попытка, ждём перед повтором
         if (attempt < maxRetries) {
-          const delay = attempt * 2000 // 2, 4, 6 секунд
-          console.log(`Retrying in ${delay}ms...`)
+          const delay = attempt * 2000
           await new Promise(resolve => setTimeout(resolve, delay))
         }
       }
     }
     
-    // Если все попытки неудачны, выбрасываем последнюю ошибку
     throw new Error(`Failed to generate content with Yandex GPT (Sync) after ${maxRetries} attempts: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`)
   }
 
@@ -210,14 +186,12 @@ export class YandexGPTService {
     
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; text: string }> = []
     
-    // Добавляем системный промпт для конкретного типа контента
     if (systemPrompt) {
       messages.push({ role: 'system', text: systemPrompt })
     } else {
       messages.push({ role: 'system', text: this.getSystemPromptForTemplate(templateType) })
     }
     
-    // Добавляем пользовательский промпт
     messages.push({ role: 'user', text: prompt })
 
     const requestData: YandexGPTRequest = {
@@ -238,15 +212,10 @@ export class YandexGPTService {
         console.log(`Sending async request to Yandex GPT (attempt ${attempt}/${maxRetries}):`, {
           url: this.baseUrl,
           modelUri: requestData.modelUri,
-<<<<<<< HEAD
-          messagesCount: requestData.messages.length
-=======
           messagesCount: requestData.messages.length,
           maxTokens: requestData.completionOptions.maxTokens
->>>>>>> b1b1d04 (fix: обновил Dockerfile и конфиг)
         })
         
-        // 1. Отправляем асинхронный запрос
         const response = await axios.post<any>(
           this.baseUrl,
           requestData,
@@ -255,7 +224,7 @@ export class YandexGPTService {
               'Authorization': `Api-Key ${this.apiKey}`,
               'Content-Type': 'application/json'
             },
-            timeout: 30000 // 30 секунд для async запроса
+            timeout: 30000
           }
         )
 
@@ -264,7 +233,6 @@ export class YandexGPTService {
           throw new Error('Async API did not return operation id')
         }
 
-        // 2. Ожидаем завершения операции
         return await this.waitForAsyncCompletion(operationId)
       } catch (error) {
         lastError = error
@@ -275,22 +243,19 @@ export class YandexGPTService {
           code: (error as any)?.code
         })
         
-        // Если это не последняя попытка, ждём перед повтором
         if (attempt < maxRetries) {
-          const delay = attempt * 2000 // 2, 4, 6 секунд
-          console.log(`Retrying async request in ${delay}ms...`)
+          const delay = attempt * 2000
           await new Promise(resolve => setTimeout(resolve, delay))
         }
       }
     }
     
-    // Если все попытки неудачны, выбрасываем последнюю ошибку
     throw new Error(`Failed to generate content with Yandex GPT (Async) after ${maxRetries} attempts: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`)
   }
 
   private async waitForAsyncCompletion(operationId: string): Promise<{ text: string; tokensUsed: number }> {
-    const maxAttempts = 30 // Максимум 30 попыток (5 минут)
-    const delay = 10000 // 10 секунд между попытками
+    const maxAttempts = 30
+    const delay = 10000
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
@@ -305,19 +270,12 @@ export class YandexGPTService {
         )
 
         const operation = response.data
-        console.log(`Async operation ${operationId} attempt ${attempt + 1}:`, {
-          done: operation.done,
-          hasError: !!operation.error,
-          hasResponse: !!operation.response,
-          responseKeys: operation.response ? Object.keys(operation.response) : []
-        })
 
         if (operation.done) {
           if (operation.error) {
             throw new Error(`Operation failed: ${operation.error.message}`)
           }
 
-          // Yandex возвращает данные напрямую в response, а не в response.result
           const result = operation.response
           if (!result) {
             throw new Error('Operation completed but no response')
@@ -326,30 +284,14 @@ export class YandexGPTService {
           const generatedText = result.alternatives?.[0]?.message?.text || ''
           const tokensUsed = parseInt(result.usage?.totalTokens) || 0
 
-          console.log('Async operation completed:', {
-            hasAlternatives: !!result.alternatives,
-            alternativesCount: result.alternatives?.length || 0,
-            textLength: generatedText.length,
-            tokensUsed
-          })
-
-          return {
-            text: generatedText,
-            tokensUsed
-          }
+          return { text: generatedText, tokensUsed }
         }
 
-        // Если операция еще не завершена, ждем
         await new Promise(resolve => setTimeout(resolve, delay))
       } catch (error) {
         if (attempt === maxAttempts - 1) {
           throw error
         }
-        console.warn(`Attempt ${attempt + 1} failed, retrying...`, {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          status: (error as any)?.response?.status || null,
-          data: (error as any)?.response?.data || null
-        })
         await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
@@ -359,36 +301,34 @@ export class YandexGPTService {
 
   private getSystemPromptForTemplate(templateType: string): string {
     const systemPrompts = {
-      'VK_POST': `Ты эксперт по созданию контента для ВКонтакте. Создавай интересные, вовлекающие посты с эмодзи, хештегами и призывами к действию. Посты должны быть живыми, неформальными и привлекательными для русскоязычной аудитории.`,
-      'TELEGRAM_POST': `Ты эксперт по созданию контента для Telegram. Создавай информативные, структурированные посты с четкой структурой, эмодзи и хештегами. Контент должен быть полезным и легко читаемым.`,
-      'EMAIL_CAMPAIGN': `Ты эксперт по email-маркетингу. Создавай профессиональные email-кампании с привлекательными темами, структурированным содержанием и четкими призывами к действию. Используй деловой тон, но не слишком формальный.`,
-      'BLOG_ARTICLE': `Ты эксперт по созданию блогов. Создавай информативные, структурированные статьи с заголовками, подзаголовками и четкой логикой изложения. Контент должен быть полезным и SEO-оптимизированным.`,
-      'VIDEO_SCRIPT': `Ты эксперт по созданию сценариев для видео. Создавай динамичные, увлекательные сценарии с четкой структурой, диалогами и визуальными подсказками. Контент должен быть интересным и удерживать внимание зрителя.`,
-      'IMAGE_GENERATION': `Ты эксперт по созданию описаний для генерации изображений. Создавай детальные, художественные описания с указанием стиля, композиции, цветовой гаммы и настроения. Описания должны быть конкретными и вдохновляющими.`
+      'VK_POST': `Ты эксперт по созданию контента для ВКонтакте...`,
+      'TELEGRAM_POST': `Ты эксперт по созданию контента для Telegram...`,
+      'EMAIL_CAMPAIGN': `Ты эксперт по email-маркетингу...`,
+      'BLOG_ARTICLE': `Ты эксперт по созданию блогов...`,
+      'VIDEO_SCRIPT': `Ты эксперт по созданию сценариев для видео...`,
+      'IMAGE_GENERATION': `Ты эксперт по созданию описаний для генерации изображений...`
     }
 
     return systemPrompts[templateType as keyof typeof systemPrompts] || 
-           'Ты эксперт по созданию качественного контента. Создавай интересный, полезный и структурированный контент.'
+           'Ты эксперт по созданию качественного контента.'
   }
 
   private getMaxTokensForTemplate(templateType: string): number {
     const tokenLimits = {
-      'VK_POST': 200,        // Уменьшили с 500 до 200
-      'TELEGRAM_POST': 400,  // Уменьшили с 800 до 400
-      'EMAIL_CAMPAIGN': 800, // Уменьшили с 1500 до 800
-      'BLOG_ARTICLE': 2000,  // Уменьшили с 3000 до 2000
-      'VIDEO_SCRIPT': 1000,  // Уменьшили с 2000 до 1000
-      'IMAGE_GENERATION': 200 // Уменьшили с 300 до 200
+      'VK_POST': 200,
+      'TELEGRAM_POST': 400,
+      'EMAIL_CAMPAIGN': 800,
+      'BLOG_ARTICLE': 2000,
+      'VIDEO_SCRIPT': 1000,
+      'IMAGE_GENERATION': 200
     }
 
     return tokenLimits[templateType as keyof typeof tokenLimits] || 500
   }
 
-  // Метод для проверки доступности API
   async checkHealth(): Promise<boolean> {
     try {
       this.validateConfig()
-      // Простой тестовый запрос
       await this.generateContent('Тест', 'VK_POST')
       return true
     } catch (error) {
@@ -398,5 +338,4 @@ export class YandexGPTService {
   }
 }
 
-// Экспортируем синглтон
 export const yandexGPT = new YandexGPTService()
