@@ -10,8 +10,6 @@ export function Header() {
   const { language, setLanguage, t } = useLanguage()
   const { user, setUser } = useUser()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const isCookieAuthed = typeof document !== 'undefined' && document.cookie.includes('graphly-user-id=')
-  const isAuthed = Boolean(user) || isCookieAuthed
 
   const handleLogout = async () => {
     try {
@@ -42,7 +40,7 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
-            {isAuthed ? (
+            {user ? (
               <>
                 <Link 
                   href="/dashboard" 
@@ -97,11 +95,9 @@ export function Header() {
               </button>
             </div>
 
-            {isAuthed ? (
+            {user ? (
               <div className="flex items-center space-x-3">
-                {user?.email && (
-                  <span className="text-sm text-gray-600">{user.email}</span>
-                )}
+                <span className="text-sm text-gray-600">{user.email}</span>
                 <Button variant="outline" onClick={handleLogout}>
                   {t('header.logout')}
                 </Button>
@@ -133,7 +129,7 @@ export function Header() {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t">
             <div className="flex flex-col space-y-3">
-              {isAuthed ? (
+              {user ? (
                 <>
                   <Link 
                     href="/dashboard" 
