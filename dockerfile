@@ -8,13 +8,17 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Install dependencies
 COPY package*.json ./
-RUN npm install --no-audit --no-fund
+RUN npm ci --only=production --no-audit --no-fund
 
 # Copy source
 COPY . .
 
 # Build the app (includes Prisma generate via package.json script)
 RUN npm run build
+
+# Clean up unnecessary files to save space
+RUN rm -rf node_modules/.cache
+RUN rm -rf .next/cache
 
 # Runtime stage
 FROM node:20-bullseye-slim
@@ -29,8 +33,12 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# Copy built app
-COPY --from=build /app ./
+# Copy only necessary files from build
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/public ./public
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/package-lock.json ./package-lock.json
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 3000
 
