@@ -1,7 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Providers } from './providers'
-import { ChunkErrorBoundary } from '@/components/ChunkErrorBoundary'
 
 export const metadata: Metadata = {
   title: 'AIКонтент - Генерация маркетингового контента с ИИ',
@@ -17,11 +16,9 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body>
-        <ChunkErrorBoundary>
-          <Providers>
-            {children}
-          </Providers>
-        </ChunkErrorBoundary>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )

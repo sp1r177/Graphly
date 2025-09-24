@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
-import { setupChunkErrorHandler } from '@/lib/chunk-error-handler'
 
 // Language Context
 export type Language = 'ru' | 'en'
@@ -128,11 +127,6 @@ export function Providers({ children }: { children: ReactNode }) {
   const t = (key: string): string => {
     return translations[language][key as keyof typeof translations['ru']] || key
   }
-
-  // Setup chunk error handler on mount
-  useEffect(() => {
-    setupChunkErrorHandler()
-  }, [])
 
   // Check authentication on mount
   useEffect(() => {
