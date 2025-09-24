@@ -18,57 +18,17 @@ interface Generation {
 }
 
 export default function DashboardPage() {
-  try {
-    // Безопасное получение хуков с fallback
-    let t, user, setUser, isAuthLoading
-    
-    try {
-      const languageHook = useLanguage()
-      const userHook = useUser()
-      t = languageHook.t
-      user = userHook.user
-      setUser = userHook.setUser
-      isAuthLoading = userHook.isLoading
-    } catch (hookError) {
-      console.error('Hook error:', hookError)
-      // Fallback значения
-      t = (key: string) => key
-      user = null
-      setUser = () => {}
-      isAuthLoading = false
-    }
-    const [prompt, setPrompt] = useState('')
-    const [templateType, setTemplateType] = useState('VK_POST')
-    const [isLoading, setIsLoading] = useState(false)
-    const [result, setResult] = useState<{
-      text?: string
-      imageUrl?: string
-    } | null>(null)
-    const [generations, setGenerations] = useState<Generation[]>([])
-    const [isLoadingHistory, setIsLoadingHistory] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-
-    // Показываем загрузку только первые 3 секунды
-    const [showLoading, setShowLoading] = useState(true)
-    
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        setShowLoading(false)
-      }, 3000)
-      
-      return () => clearTimeout(timer)
-    }, [])
-    
-    if (showLoading) {
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Загрузка...</p>
-          </div>
-        </div>
-      )
-    }
+  const { t } = useLanguage()
+  const { user, setUser, isLoading: isAuthLoading } = useUser()
+  const [prompt, setPrompt] = useState('')
+  const [templateType, setTemplateType] = useState('VK_POST')
+  const [isLoading, setIsLoading] = useState(false)
+  const [result, setResult] = useState<{
+    text?: string
+    imageUrl?: string
+  } | null>(null)
+  const [generations, setGenerations] = useState<Generation[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
 
   // Debug info
   useEffect(() => {
@@ -93,11 +53,9 @@ export default function DashboardPage() {
       } else {
         const errorData = await response.json()
         console.error('API error:', errorData)
-        setError('Ошибка загрузки истории генераций')
       }
     } catch (error) {
       console.error('Failed to fetch generation history:', error)
-      setError('Ошибка загрузки истории генераций')
     } finally {
       setIsLoadingHistory(false)
     }
@@ -227,35 +185,6 @@ export default function DashboardPage() {
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Ошибка</h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p>{error}</p>
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={() => {
-                      setError(null)
-                      fetchGenerationHistory()
-                    }}
-                    className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
-                  >
-                    Попробовать снова
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -526,32 +455,4 @@ export default function DashboardPage() {
       </div>
     </div>
   )
-  } catch (error) {
-    console.error('Dashboard component error:', error)
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
-          <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Ошибка загрузки
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Произошла ошибка при загрузке страницы. Попробуйте обновить страницу.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Обновить страницу
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 }
