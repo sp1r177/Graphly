@@ -19,8 +19,24 @@ interface Generation {
 
 export default function DashboardPage() {
   try {
-    const { t } = useLanguage()
-    const { user, setUser, isLoading: isAuthLoading } = useUser()
+    // Безопасное получение хуков с fallback
+    let t, user, setUser, isAuthLoading
+    
+    try {
+      const languageHook = useLanguage()
+      const userHook = useUser()
+      t = languageHook.t
+      user = userHook.user
+      setUser = userHook.setUser
+      isAuthLoading = userHook.isLoading
+    } catch (hookError) {
+      console.error('Hook error:', hookError)
+      // Fallback значения
+      t = (key: string) => key
+      user = null
+      setUser = () => {}
+      isAuthLoading = false
+    }
     const [prompt, setPrompt] = useState('')
     const [templateType, setTemplateType] = useState('VK_POST')
     const [isLoading, setIsLoading] = useState(false)
@@ -32,8 +48,18 @@ export default function DashboardPage() {
     const [isLoadingHistory, setIsLoadingHistory] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Показываем загрузку пока хуки не готовы
-    if (isAuthLoading) {
+    // Показываем загрузку только первые 3 секунды
+    const [showLoading, setShowLoading] = useState(true)
+    
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        setShowLoading(false)
+      }, 3000)
+      
+      return () => clearTimeout(timer)
+    }, [])
+    
+    if (showLoading) {
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
