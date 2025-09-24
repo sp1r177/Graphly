@@ -6,12 +6,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install dependencies
-COPY package*.json ./
-RUN npm ci --only=production --no-audit --no-fund
-
-# Copy source
+# Copy source and install dependencies
 COPY . .
+
+# Install all dependencies (including dev for build)
+RUN npm install --no-audit --no-fund
 
 # Build the app (includes Prisma generate via package.json script)
 RUN npm run build
