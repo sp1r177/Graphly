@@ -8,8 +8,29 @@ import { useState } from 'react'
 import { AuthModal } from './AuthModal'
 
 export function LandingHero() {
-  const { t, language, setLanguage } = useLanguage()
-  const { user, setUser, isLoading: isAuthLoading } = useUser()
+  // Безопасное получение хуков с fallback
+  let t, language, setLanguage, user, setUser, isAuthLoading
+  
+  try {
+    const languageHook = useLanguage()
+    const userHook = useUser()
+    t = languageHook.t
+    language = languageHook.language
+    setLanguage = languageHook.setLanguage
+    user = userHook.user
+    setUser = userHook.setUser
+    isAuthLoading = userHook.isLoading
+  } catch (error) {
+    console.error('Hook error in LandingHero:', error)
+    // Fallback значения
+    t = (key: string) => key
+    language = 'ru'
+    setLanguage = () => {}
+    user = null
+    setUser = () => {}
+    isAuthLoading = false
+  }
+  
   const [prompt, setPrompt] = useState('')
   const [templateType, setTemplateType] = useState('VK_POST')
   const [isLoading, setIsLoading] = useState(false)

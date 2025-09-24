@@ -18,8 +18,25 @@ interface Generation {
 }
 
 export default function DashboardPage() {
-  const { t } = useLanguage()
-  const { user, setUser, isLoading: isAuthLoading } = useUser()
+  // Безопасное получение хуков с fallback
+  let t, user, setUser, isAuthLoading
+  
+  try {
+    const languageHook = useLanguage()
+    const userHook = useUser()
+    t = languageHook.t
+    user = userHook.user
+    setUser = userHook.setUser
+    isAuthLoading = userHook.isLoading
+  } catch (error) {
+    console.error('Hook error in Dashboard:', error)
+    // Fallback значения
+    t = (key: string) => key
+    user = null
+    setUser = () => {}
+    isAuthLoading = false
+  }
+  
   const [prompt, setPrompt] = useState('')
   const [templateType, setTemplateType] = useState('VK_POST')
   const [isLoading, setIsLoading] = useState(false)
@@ -29,6 +46,10 @@ export default function DashboardPage() {
   } | null>(null)
   const [generations, setGenerations] = useState<Generation[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+
+  // Безопасные fallback значения
+  const safeUser = user || { name: 'Пользователь', email: '', subscriptionStatus: 'FREE' as const, usageCountDay: 0, usageCountMonth: 0 }
+  const safeT = t || ((key: string) => key)
 
   // Debug info
   useEffect(() => {
@@ -188,7 +209,7 @@ export default function DashboardPage() {
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Добро пожаловать, {user?.name || user?.email?.split('@')[0]}!
+            Добро пожаловать, {safeUser?.name || safeUser?.email?.split('@')[0]}!
           </h1>
           <p className="text-gray-600">
             Создавайте уникальный контент с помощью искусственного интеллекта
@@ -215,12 +236,12 @@ export default function DashboardPage() {
                     value={templateType}
                     onChange={(e) => setTemplateType(e.target.value)}
                   >
-                    <option value="VK_POST">{t('template.vk_post')}</option>
-                    <option value="TELEGRAM_POST">{t('template.telegram_post')}</option>
-                    <option value="EMAIL_CAMPAIGN">{t('template.email')}</option>
-                    <option value="BLOG_ARTICLE">{t('template.article')}</option>
-                    <option value="VIDEO_SCRIPT">{t('template.video_script')}</option>
-                    <option value="IMAGE_GENERATION">{t('template.image')}</option>
+                    <option value="VK_POST">{safeT('template.vk_post')}</option>
+                    <option value="TELEGRAM_POST">{safeT('template.telegram_post')}</option>
+                    <option value="EMAIL_CAMPAIGN">{safeT('template.email')}</option>
+                    <option value="BLOG_ARTICLE">{safeT('template.article')}</option>
+                    <option value="VIDEO_SCRIPT">{safeT('template.video_script')}</option>
+                    <option value="IMAGE_GENERATION">{safeT('template.image')}</option>
                   </Select>
                 </div>
 
@@ -230,7 +251,7 @@ export default function DashboardPage() {
                     Описание контента
                   </label>
                   <Textarea
-                    placeholder={t('hero.placeholder')}
+                    placeholder={safeT('hero.placeholder')}
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     rows={3}
@@ -240,19 +261,19 @@ export default function DashboardPage() {
                 {/* Generate Button */}
                 <Button
                   onClick={handleGenerate}
-                  disabled={isLoading || isAuthLoading || !prompt.trim() || (user?.subscriptionStatus === 'FREE' && (user?.usageCountDay || 0) >= 25)}
+                  disabled={isLoading || isAuthLoading || !prompt.trim() || (safeUser?.subscriptionStatus === 'FREE' && (safeUser?.usageCountDay || 0) >= 25)}
                   variant="primary"
                   className="w-full"
                 >
                   {isLoading ? (
                     <>
                       <Sparkles className="animate-spin mr-2" size={20} />
-                      {t('common.loading')}
+                      {safeT('common.loading')}
                     </>
                   ) : (
                     <>
                       <Sparkles className="mr-2" size={20} />
-                      {t('hero.generate')}
+                      {safeT('hero.generate')}
                     </>
                   )}
                 </Button>
